@@ -680,6 +680,152 @@ export class WorldLandmarks {
     }
   }
 
+  private addRailing(
+    group: THREE.Group,
+    start: THREE.Vector3,
+    end: THREE.Vector3,
+    height: number,
+    material: THREE.Material,
+    seed: number,
+    includeMidRail = true
+  ) {
+    const span = end.clone().sub(start);
+    const length = span.length();
+    const yaw = Math.atan2(span.x, span.z);
+    const center = start.clone().add(end).multiplyScalar(0.5);
+    const postCount = Math.max(2, Math.floor(length / 1.4) + 1);
+
+    for (let i = 0; i < postCount; i += 1) {
+      const t = i / Math.max(1, postCount - 1);
+      const x = THREE.MathUtils.lerp(start.x, end.x, t);
+      const y = THREE.MathUtils.lerp(start.y, end.y, t);
+      const z = THREE.MathUtils.lerp(start.z, end.z, t);
+      this.mesh(
+        group,
+        this.detailedBox(0.08, height, 0.08, seed + i * 13, 2, 4, 2, 0.006),
+        material,
+        [x, y + height * 0.5, z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    }
+
+    this.mesh(
+      group,
+      this.detailedBox(0.08, 0.08, length * 0.98, seed + 120, 2, 2, 8, 0.006),
+      material,
+      [center.x, center.y + height, center.z],
+      1,
+      [0, yaw, 0],
+      false
+    );
+
+    if (includeMidRail) {
+      this.mesh(
+        group,
+        this.detailedBox(0.06, 0.06, length * 0.98, seed + 160, 2, 2, 8, 0.005),
+        material,
+        [center.x, center.y + height * 0.56, center.z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    }
+  }
+
+  private addCrateStack(
+    group: THREE.Group,
+    center: THREE.Vector3,
+    size: [number, number, number],
+    layers: number,
+    baseMaterial: THREE.Material,
+    bandMaterial: THREE.Material,
+    seed: number,
+    yaw = 0
+  ) {
+    for (let layer = 0; layer < layers; layer += 1) {
+      const width = size[0] * (1 - layer * 0.06);
+      const depth = size[2] * (1 - layer * 0.04);
+      const x = center.x + (seededRandom(seed + layer * 7) - 0.5) * 0.18;
+      const z = center.z + (seededRandom(seed + layer * 11) - 0.5) * 0.18;
+      const y = center.y + layer * (size[1] + 0.04) + size[1] * 0.5;
+      this.mesh(
+        group,
+        this.detailedBox(width, size[1], depth, seed + layer * 17, 3, 3, 3, 0.012),
+        baseMaterial,
+        [x, y, z],
+        1,
+        [0, yaw + seededRandom(seed + layer * 19) * 0.08 - 0.04, 0],
+        false
+      );
+      this.mesh(
+        group,
+        this.detailedBox(width * 0.12, size[1] * 1.02, depth * 0.96, seed + 90 + layer * 13, 2, 2, 2, 0.006),
+        bandMaterial,
+        [x - width * 0.18, y, z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+      this.mesh(
+        group,
+        this.detailedBox(width * 0.12, size[1] * 1.02, depth * 0.96, seed + 120 + layer * 13, 2, 2, 2, 0.006),
+        bandMaterial,
+        [x + width * 0.18, y, z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    }
+  }
+
+  private addAntennaCluster(
+    group: THREE.Group,
+    center: THREE.Vector3,
+    radius: number,
+    mastMaterial: THREE.Material,
+    accentMaterial: THREE.Material,
+    seed: number
+  ) {
+    const count = 3 + Math.floor(seededRandom(seed) * 2);
+    for (let i = 0; i < count; i += 1) {
+      const angle = (i / count) * Math.PI * 2 + seededRandom(seed + i * 7) * 0.35;
+      const dist = radius * (0.35 + seededRandom(seed + 80 + i) * 0.42);
+      const height = 1.2 + seededRandom(seed + 40 + i) * 2.1;
+      const x = center.x + Math.cos(angle) * dist;
+      const z = center.z + Math.sin(angle) * dist;
+      this.mesh(
+        group,
+        this.detailedCylinder(0.03, 0.04, height, 6, 5, seed + 140 + i * 9, 0.005),
+        mastMaterial,
+        [x, center.y + height * 0.5, z],
+        1,
+        [0, 0, 0],
+        false
+      );
+      this.mesh(
+        group,
+        new THREE.SphereGeometry(0.08 + seededRandom(seed + 220 + i) * 0.06, 8, 6),
+        accentMaterial,
+        [x, center.y + height + 0.04, z],
+        1,
+        [0, 0, 0],
+        false
+      );
+      if (i > 0) {
+        this.addCable(
+          group,
+          new THREE.Vector3(center.x, center.y + 0.9, center.z),
+          new THREE.Vector3(x, center.y + height * 0.72, z),
+          0.12,
+          0.016,
+          mastMaterial
+        );
+      }
+    }
+  }
+
   private getPoiAnchor(kind: LandmarkKind, bounds: THREE.Box3) {
     const center = bounds.getCenter(new THREE.Vector3());
     switch (kind) {
@@ -1659,10 +1805,13 @@ export class WorldLandmarks {
   private buildStatueGarden(seed: number) {
     const group = new THREE.Group();
     const stone = this.createMaterial(0xb69bb4);
+    const blush = this.createMaterial(0xd7bcc4);
     const dark = this.createMaterial(0x4a4452);
     const teal = this.createMaterial(0x7bcbbf);
     const water = this.createGlowMaterial(0x7ce2d2, 0.34);
 
+    this.mesh(group, this.detailedCylinder(5.8, 6.2, 0.44, 24, 4, seed + 4, 0.02), stone, [0, 0.12, 0], 1, [0, 0, 0], false);
+    this.mesh(group, this.detailedCylinder(5.2, 5.5, 0.28, 22, 4, seed + 8, 0.018), blush, [0, 0.34, 0], 1, [0, 0, 0], false);
     this.mesh(group, new THREE.CircleGeometry(4.6, 46), water, [0, 0.05, 0], [1.4, 1, 0.74], [-Math.PI / 2, 0, 0], false);
     this.mesh(group, new THREE.TorusGeometry(4.7, 0.14, 5, 48), dark, [0, 0.12, 0], [1.42, 0.16, 0.76], [-Math.PI / 2, 0, 0], false);
     for (const side of [-1, 1]) {
@@ -1671,7 +1820,20 @@ export class WorldLandmarks {
       this.mesh(group, new THREE.ConeGeometry(0.12, 0.9, 5), dark, [side * 2.14, 5.4, -0.06], 1, [0.4, 0, side * -0.28]);
       this.mesh(group, new THREE.ConeGeometry(0.12, 0.9, 5), dark, [side * 1.66, 5.4, -0.06], 1, [0.4, 0, side * 0.28]);
     }
+    for (let i = 0; i < 4; i += 1) {
+      const angle = i * (Math.PI / 2) + 0.36;
+      const x = Math.cos(angle) * 4.3;
+      const z = Math.sin(angle) * 2.9;
+      this.mesh(group, this.detailedCylinder(0.46, 0.62, 1.2, 10, 5, seed + 96 + i, 0.016), stone, [x, 0.74, z], 1, [0, 0, 0]);
+      this.mesh(group, this.archFrameGeometry(1.8, 2.5, 0.2, 0.22, seed + 128 + i * 11), dark, [x, 2.18, z], 1, [0, angle + Math.PI * 0.5, 0], false);
+      this.mesh(group, new THREE.BoxGeometry(0.22, 0.8, 0.22), teal, [x, 1.8, z], 1, [0, angle, 0], false);
+    }
+    this.mesh(group, this.archFrameGeometry(3.6, 3.2, 0.3, 0.28, seed + 180), stone, [0, 1.76, 4.8], 1, [0, Math.PI, 0]);
+    this.mesh(group, this.archFrameGeometry(2.8, 2.8, 0.26, 0.24, seed + 206), blush, [0, 1.56, -4.4], 1, [0, 0, 0]);
     this.addBridge(group, new THREE.Vector3(-4.4, 0.22, -1.8), new THREE.Vector3(4.4, 0.22, -1.8), 0.82, 0.08, dark, stone);
+    this.addBridge(group, new THREE.Vector3(-3.4, 0.22, 2.2), new THREE.Vector3(3.4, 0.22, 2.2), 0.68, 0.08, dark, blush);
+    this.addCrateStack(group, new THREE.Vector3(-4.7, 0.04, 3.5), [0.9, 0.42, 0.8], 2, blush, dark, seed + 250, 0.16);
+    this.addCrateStack(group, new THREE.Vector3(4.5, 0.04, -3.7), [0.82, 0.36, 0.72], 3, stone, dark, seed + 280, -0.2);
     this.addSkylinePins(group, new THREE.Vector3(0, 0.2, 4.8), 7, 1.5, dark, teal, seed + 80, 3.8, 7.8);
 
     return group;
@@ -1722,6 +1884,16 @@ export class WorldLandmarks {
       const z = -11.5 + i * 5;
       this.mesh(group, this.detailedBox(1.9, 0.38, 2.2, seed + 900 + i * 11, 3, 2, 3, 0.02), concrete, [-9.2, 0.28, z], 1, [0, 0.12, 0], false);
       this.mesh(group, this.detailedBox(1.9, 0.38, 2.2, seed + 940 + i * 11, 3, 2, 3, 0.02), concrete, [9.2, 0.28, z], 1, [0, -0.12, 0], false);
+    }
+    for (let i = 0; i < 4; i += 1) {
+      const z = -10.6 + i * 7.0;
+      for (const side of [-1, 1]) {
+        const x = side * 8.0;
+        this.mesh(group, this.detailedBox(1.6, 0.42, 1.8, seed + 1088 + i * 17 + side, 3, 2, 3, 0.014), concrete, [x, 0.3, z], 1, [0, side * 0.12, 0], false);
+        this.mesh(group, this.detailedBox(1.1, 0.18, 1.3, seed + 1140 + i * 13 + side, 2, 2, 2, 0.01), dark, [x, 0.62, z], 1, [0, side * 0.12, 0], false);
+        this.mesh(group, new THREE.BoxGeometry(0.72, 0.82, 0.08), glow, [x, 1.32, z + 0.56], 1, [0, side < 0 ? Math.PI / 8 : -Math.PI / 8, 0], false);
+        this.addCrateStack(group, new THREE.Vector3(x + side * 0.9, 0.04, z - 0.96), [0.52, 0.28, 0.46], 2, concrete, dark, seed + 1200 + i * 19 + side, side * 0.2);
+      }
     }
 
     this.addBridge(
@@ -1786,6 +1958,26 @@ export class WorldLandmarks {
       dark,
       0
     );
+    this.addPipeRack(
+      group,
+      new THREE.Vector3(-5.6, 0, -14.4),
+      new THREE.Vector3(-5.6, 0, 14.2),
+      4.96,
+      dark,
+      concrete,
+      seed + 1260
+    );
+    this.addPipeRack(
+      group,
+      new THREE.Vector3(5.6, 0, -14.4),
+      new THREE.Vector3(5.6, 0, 14.2),
+      4.96,
+      dark,
+      concrete,
+      seed + 1310
+    );
+    this.addRailing(group, new THREE.Vector3(-9.9, 0.26, -14.6), new THREE.Vector3(-9.9, 0.26, 14.6), 0.82, dark, seed + 1360);
+    this.addRailing(group, new THREE.Vector3(9.9, 0.26, -14.6), new THREE.Vector3(9.9, 0.26, 14.6), 0.82, dark, seed + 1410);
     this.addRecessedPortal(
       group,
       new THREE.Vector3(0, 2.1, -15.6),
@@ -1807,6 +1999,7 @@ export class WorldLandmarks {
     const shadow = this.createMaterial(0x4d5557);
     const teal = this.createMaterial(0x70cfc2);
     const rust = this.createMaterial(0xbe8d78);
+    const sand = this.createMaterial(0xd1b58a);
     const glow = this.createGlowMaterial(0x79fff0, 0.38);
 
     this.mesh(
@@ -1857,6 +2050,8 @@ export class WorldLandmarks {
     this.mesh(group, this.detailedBox(0.14, 2.45, 1.18, seed + 180, 2, 6, 2, 0.025), rust, [-1.1, 2.95, 1.34], 1, [0.14, 0.18, -0.16]);
     this.mesh(group, this.detailedBox(2.9, 0.14, 1.16, seed + 190, 4, 2, 3, 0.02), rust, [0.15, 0.2, -2.28], 1, [0.06, 0.32, -0.22]);
     this.mesh(group, this.detailedBox(2.1, 0.12, 1.02, seed + 200, 4, 2, 3, 0.02), hull, [-3.6, 0.24, 2.26], 1, [-0.04, -0.22, 0.16]);
+    this.mesh(group, this.archFrameGeometry(1.6, 1.06, 0.12, 0.18, seed + 222), shadow, [-1.2, 3.06, 0.88], 1, [0, Math.PI / 2 + 0.14, 0], false);
+    this.mesh(group, this.detailedBox(1.2, 0.3, 0.82, seed + 232, 3, 2, 2, 0.01), shadow, [-1.36, 2.54, 0.84], 1, [0.08, 0.18, -0.12], false);
     this.mesh(group, new THREE.CircleGeometry(0.44, 28), glow, [-4.72, 2.0, 0], 1, [0, Math.PI / 2, 0], false);
     this.addCable(group, new THREE.Vector3(-2.6, 3.28, 0.94), new THREE.Vector3(1.7, 2.74, 0.3), 0.52, 0.03, shadow);
     this.addPolyline(
@@ -1869,6 +2064,32 @@ export class WorldLandmarks {
       ],
       0.28
     );
+
+    for (const side of [-1, 1]) {
+      this.mesh(group, this.detailedBox(0.12, 1.18, 0.12, seed + 280 + side, 2, 4, 2, 0.008), shadow, [-2.6, 1.12, side * 1.42], 1, [0.3, 0, side * 0.42], false);
+      this.mesh(group, this.detailedBox(0.12, 1.34, 0.12, seed + 310 + side, 2, 4, 2, 0.008), shadow, [0.9, 0.9, side * 1.66], 1, [-0.18, 0, side * -0.46], false);
+      this.mesh(group, this.detailedBox(2.4, 0.08, 0.12, seed + 340 + side, 4, 2, 2, 0.006), shadow, [-0.8, 0.34, side * 1.92], 1, [0.02, 0.04, 0], false);
+      this.mesh(group, this.detailedBox(1.8, 0.12, 0.6, seed + 360 + side, 3, 2, 2, 0.01), sand, [2.2, 1.42, side * 1.84], 1, [0.24, side * 0.12, side * 0.22], false);
+    }
+
+    for (let i = 0; i < 4; i += 1) {
+      this.mesh(
+        group,
+        this.detailedBox(0.6 + i * 0.12, 0.16, 0.8 - i * 0.08, seed + 390 + i * 13, 2, 2, 2, 0.01),
+        hull,
+        [-2.8 + i * 1.08, 3.18 + i * 0.08, -0.04],
+        1,
+        [0.08, 0.06, 0],
+        false
+      );
+    }
+
+    this.addAntennaCluster(group, new THREE.Vector3(-0.6, 3.1, 1.26), 0.72, shadow, teal, seed + 460);
+    this.addCrateStack(group, new THREE.Vector3(3.8, 0.02, -3.1), [0.86, 0.34, 0.72], 2, rust, shadow, seed + 520, 0.3);
+    this.addCrateStack(group, new THREE.Vector3(-5.2, 0.02, 2.9), [0.72, 0.3, 0.62], 3, sand, shadow, seed + 560, -0.18);
+    this.addBridge(group, new THREE.Vector3(1.4, 0.24, 2.14), new THREE.Vector3(3.8, 0.46, 2.82), 0.56, 0.08, shadow, rust);
+    this.addCable(group, new THREE.Vector3(2.1, 1.86, 1.72), new THREE.Vector3(3.6, 0.86, 2.6), 0.34, 0.026, shadow);
+    this.addRailing(group, new THREE.Vector3(1.1, 0.34, 2.02), new THREE.Vector3(3.4, 0.54, 2.7), 0.58, shadow, seed + 620, false);
 
     return group;
   }
