@@ -638,6 +638,69 @@ export class GraphicNovelLayers {
     this.addItem(group, 0, 0.12, baseZ, 0.6 + seededRandom(seed + 300) * 0.05, 0.14, 1);
   }
 
+  private addBalloonCaravan(baseZ: number, seed: number, side: -1 | 1) {
+    const group = new THREE.Group();
+    const hull = this.material(0xe5b09d, 0.22, 'rock');
+    const envelope = this.material(0xf4e4cb, 0.2, 'paper');
+    const accent = this.material(0x89d7cb, 0.24, 'accent');
+    const ink = this.lineMaterial(0x2a1a12, 0.18, 'ink');
+
+    for (let i = 0; i < 3; i += 1) {
+      const x = side * (10.5 + i * 4.6 + seededRandom(seed + i) * 1.2);
+      const y = 8.4 + i * 1.1 + seededRandom(seed + 20 + i) * 1.8;
+      const width = 2.2 + seededRandom(seed + 40 + i) * 0.9;
+      const height = 2.7 + seededRandom(seed + 60 + i) * 1.1;
+      const envelopePoints: THREE.Vector2[] = [];
+      const segments = 18;
+      for (let s = 0; s <= segments; s += 1) {
+        const t = s / segments;
+        const angle = Math.PI * 2 * t;
+        const bulge = 0.86 + Math.sin(t * Math.PI * 3 + seed * 0.14 + i) * 0.05;
+        envelopePoints.push(new THREE.Vector2(Math.cos(angle) * width * 0.5 * bulge, Math.sin(angle) * height * 0.5));
+      }
+      this.meshFromPoints(group, envelopePoints, i % 2 === 0 ? envelope : hull, [x, y, -i * 0.08], [1, 1.06, 1], [0, 0, side * 0.03]);
+      this.lineFromPoints(group, envelopePoints.map((p) => new THREE.Vector3(p.x + x, p.y + y, 0.02 - i * 0.08)), ink);
+
+      const gondola = [
+        new THREE.Vector2(-0.48, 0),
+        new THREE.Vector2(0.52, 0),
+        new THREE.Vector2(0.4, 0.34),
+        new THREE.Vector2(-0.38, 0.34),
+      ];
+      this.meshFromPoints(group, gondola, i % 2 === 0 ? hull : accent, [x + side * 0.08, y - height * 0.78, 0.08], 1, [0, 0, side * 0.04]);
+      this.lineFromPoints(
+        group,
+        [
+          new THREE.Vector3(x - 0.34, y - height * 0.42, 0.02),
+          new THREE.Vector3(x - 0.18, y - height * 0.62, 0.08),
+        ],
+        ink
+      );
+      this.lineFromPoints(
+        group,
+        [
+          new THREE.Vector3(x + 0.34, y - height * 0.42, 0.02),
+          new THREE.Vector3(x + 0.18, y - height * 0.62, 0.08),
+        ],
+        ink
+      );
+      this.meshFromPoints(
+        group,
+        [
+          new THREE.Vector2(0, 0),
+          new THREE.Vector2(side * 0.94, 0.14),
+          new THREE.Vector2(side * 0.68, -0.18),
+        ],
+        accent,
+        [x, y - height * 0.18, 0.1],
+        1,
+        [0, 0, side * 0.08]
+      );
+    }
+
+    this.addItem(group, 0, 0.2, baseZ, 0.48 + seededRandom(seed + 300) * 0.04, 0.1, 1);
+  }
+
   private addItem(group: THREE.Group, baseX: number, baseY: number, baseZ: number, speed: number, sway: number, scale: number) {
     group.position.set(baseX, baseY, -baseZ);
     group.scale.setScalar(scale);
@@ -688,6 +751,10 @@ export class GraphicNovelLayers {
 
     for (let i = 0; i < 6; i += 1) {
       this.addMonolithGarden(102 + i * 94, 5600 + i * 25, i % 2 === 0 ? -1 : 1);
+    }
+
+    for (let i = 0; i < 5; i += 1) {
+      this.addBalloonCaravan(154 + i * 118, 6200 + i * 29, i % 2 === 0 ? -1 : 1);
     }
   }
 

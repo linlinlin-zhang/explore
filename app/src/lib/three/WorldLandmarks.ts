@@ -826,6 +826,188 @@ export class WorldLandmarks {
     }
   }
 
+  private addLadder(
+    group: THREE.Group,
+    base: THREE.Vector3,
+    height: number,
+    width: number,
+    material: THREE.Material,
+    seed: number,
+    yaw = 0
+  ) {
+    const railOffset = width * 0.5;
+    this.mesh(
+      group,
+      this.detailedBox(0.06, height, 0.06, seed + 1, 2, 8, 2, 0.006),
+      material,
+      [base.x - Math.cos(yaw) * railOffset, base.y + height * 0.5, base.z + Math.sin(yaw) * railOffset],
+      1,
+      [0, yaw, 0],
+      false
+    );
+    this.mesh(
+      group,
+      this.detailedBox(0.06, height, 0.06, seed + 7, 2, 8, 2, 0.006),
+      material,
+      [base.x + Math.cos(yaw) * railOffset, base.y + height * 0.5, base.z - Math.sin(yaw) * railOffset],
+      1,
+      [0, yaw, 0],
+      false
+    );
+
+    const rungCount = Math.max(4, Math.floor(height / 0.42));
+    for (let i = 0; i < rungCount; i += 1) {
+      const y = base.y + 0.28 + (i / Math.max(1, rungCount - 1)) * (height - 0.42);
+      this.mesh(
+        group,
+        this.detailedBox(width * 0.92, 0.04, 0.08, seed + 20 + i * 7, 2, 2, 2, 0.004),
+        material,
+        [base.x, y, base.z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    }
+  }
+
+  private addCanopyStall(
+    group: THREE.Group,
+    center: THREE.Vector3,
+    width: number,
+    depth: number,
+    height: number,
+    frameMaterial: THREE.Material,
+    canopyMaterial: THREE.Material,
+    seed: number,
+    yaw = 0
+  ) {
+    const posts: Array<[number, number]> = [
+      [-width * 0.44, -depth * 0.38],
+      [width * 0.44, -depth * 0.38],
+      [-width * 0.4, depth * 0.38],
+      [width * 0.4, depth * 0.38],
+    ];
+
+    posts.forEach(([x, z], index) => {
+      this.mesh(
+        group,
+        this.detailedBox(0.08, height, 0.08, seed + index * 11, 2, 7, 2, 0.006),
+        frameMaterial,
+        [center.x + x, center.y + height * 0.5, center.z + z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    });
+
+    this.mesh(
+      group,
+      this.detailedBox(width * 0.86, 0.28, depth * 0.42, seed + 58, 4, 3, 3, 0.01),
+      frameMaterial,
+      [center.x, center.y + height * 0.42, center.z],
+      1,
+      [0, yaw, 0],
+      false
+    );
+    this.mesh(
+      group,
+      this.detailedBox(width, 0.1, depth, seed + 76, 6, 2, 4, 0.01),
+      canopyMaterial,
+      [center.x, center.y + height + 0.08, center.z],
+      1,
+      [0.08, yaw, 0],
+      false
+    );
+    this.mesh(
+      group,
+      this.detailedBox(width * 0.82, 0.08, depth * 0.18, seed + 92, 5, 2, 2, 0.008),
+      frameMaterial,
+      [center.x, center.y + height + 0.2, center.z - depth * 0.16],
+      1,
+      [0.12, yaw, 0],
+      false
+    );
+
+    for (let i = 0; i < 3; i += 1) {
+      const boxWidth = width * (0.18 + i * 0.02);
+      const offset = (i - 1) * width * 0.2;
+      this.mesh(
+        group,
+        this.detailedBox(boxWidth, 0.18 + i * 0.03, depth * 0.16, seed + 120 + i * 13, 2, 2, 2, 0.008),
+        i % 2 === 0 ? canopyMaterial : frameMaterial,
+        [center.x + offset, center.y + 0.14 + i * 0.02, center.z + depth * 0.08],
+        1,
+        [0, yaw + (i - 1) * 0.08, 0],
+        false
+      );
+    }
+  }
+
+  private addTankBank(
+    group: THREE.Group,
+    center: THREE.Vector3,
+    count: number,
+    spacing: number,
+    tankMaterial: THREE.Material,
+    bandMaterial: THREE.Material,
+    seed: number,
+    yaw = 0
+  ) {
+    for (let i = 0; i < count; i += 1) {
+      const offset = (i - (count - 1) * 0.5) * spacing;
+      const x = center.x + Math.cos(yaw) * offset;
+      const z = center.z - Math.sin(yaw) * offset;
+      const height = 1.6 + seededRandom(seed + i * 13) * 1.4;
+      const radius = 0.38 + seededRandom(seed + 60 + i * 7) * 0.14;
+      this.mesh(
+        group,
+        this.detailedCylinder(radius, radius * 1.06, height, 12, 7, seed + 100 + i * 17, 0.016),
+        tankMaterial,
+        [x, center.y + height * 0.5, z],
+        [1, 1, 0.92],
+        [0, 0, 0],
+        false
+      );
+      this.mesh(
+        group,
+        new THREE.TorusGeometry(radius * 1.02, 0.028, 6, 24),
+        bandMaterial,
+        [x, center.y + height * 0.4, z],
+        [1, 1, 0.92],
+        [Math.PI / 2, 0, 0],
+        false
+      );
+      this.mesh(
+        group,
+        new THREE.TorusGeometry(radius * 0.98, 0.026, 6, 24),
+        bandMaterial,
+        [x, center.y + height * 0.76, z],
+        [1, 1, 0.92],
+        [Math.PI / 2, 0, 0],
+        false
+      );
+      this.mesh(
+        group,
+        this.detailedBox(radius * 0.52, 0.08, radius * 0.52, seed + 180 + i * 11, 2, 2, 2, 0.006),
+        bandMaterial,
+        [x, center.y + height + 0.06, z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+      if (i > 0) {
+        this.addCable(
+          group,
+          new THREE.Vector3(x - Math.cos(yaw) * spacing * 0.5, center.y + 1.0, z + Math.sin(yaw) * spacing * 0.5),
+          new THREE.Vector3(x, center.y + 1.0 + Math.sin(i) * 0.08, z),
+          0.08,
+          0.018,
+          bandMaterial
+        );
+      }
+    }
+  }
+
   private getPoiAnchor(kind: LandmarkKind, bounds: THREE.Box3) {
     const center = bounds.getCenter(new THREE.Vector3());
     switch (kind) {
@@ -1450,6 +1632,9 @@ export class WorldLandmarks {
     this.addPergola(group, new THREE.Vector3(17.8, 6.74, 0.52), 2.8, 2.0, 1.8, dark, teal, seed + 1124, -0.16);
     this.addAntennaCluster(group, new THREE.Vector3(17.6, 6.98, 0.6), 0.52, dark, teal, seed + 1142);
     this.addDishRig(group, new THREE.Vector3(10.7, 0.2, 4.6), 0.86, 2.7, dark, teal, seed + 1138, 0.22);
+    this.addCanopyStall(group, new THREE.Vector3(14.5, 6.04, 4.26), 2.9, 1.9, 1.85, dark, peach, seed + 1154, 0.12);
+    this.addLadder(group, new THREE.Vector3(12.2, 0.34, 4.92), 4.6, 0.42, dark, seed + 1166, 0.08);
+    this.addTankBank(group, new THREE.Vector3(-11.4, 0.04, 3.8), 3, 1.22, stone, dark, seed + 1180, 0.04);
 
     return group;
   }
@@ -1577,6 +1762,10 @@ export class WorldLandmarks {
     this.mesh(group, this.detailedBox(1.4, 0.18, 0.46, seed + 438, 2, 2, 2, 0.01), blush, [3.4, 0.2, -4.4], 1, [0, -0.14, 0], false);
     this.addAntennaCluster(group, new THREE.Vector3(8.8, 4.9, 2.4), 0.42, dark, teal, seed + 444);
     this.addDishRig(group, new THREE.Vector3(6.6, 0.1, 5.5), 0.92, 2.2, dark, teal, seed + 420, 0.22);
+    this.addCanopyStall(group, new THREE.Vector3(-4.8, 0.08, -4.2), 3.2, 2.2, 1.9, dark, blush, seed + 452, 0.18);
+    this.addCanopyStall(group, new THREE.Vector3(4.8, 0.08, 6.2), 2.8, 1.8, 1.72, dark, stone, seed + 466, -0.2);
+    this.addLadder(group, new THREE.Vector3(8.72, 0.36, 3.12), 2.7, 0.34, dark, seed + 478, -0.24);
+    this.addTankBank(group, new THREE.Vector3(5.8, 0.04, 4.4), 3, 0.76, blush, dark, seed + 490, 0.12);
 
     for (let i = 0; i < 14; i += 1) {
       const angle = seededRandom(seed + i) * Math.PI * 2;
@@ -1727,6 +1916,9 @@ export class WorldLandmarks {
     this.addCrateStack(group, new THREE.Vector3(-5.8, 0.04, -4.2), [0.82, 0.3, 0.62], 3, hull, dark, seed + 268, 0.12);
     this.addCrateStack(group, new THREE.Vector3(6.7, 0.04, -5.0), [0.72, 0.28, 0.58], 2, rust, dark, seed + 276, -0.18);
     this.addAntennaCluster(group, new THREE.Vector3(6.8, 2.18, 4.9), 0.4, dark, teal, seed + 282);
+    this.addTankBank(group, new THREE.Vector3(-7.2, 0.04, 4.6), 4, 1.14, rust, dark, seed + 290, 0.14);
+    this.addCanopyStall(group, new THREE.Vector3(7.2, 0.06, -4.9), 3.2, 2.2, 1.9, dark, hull, seed + 304, -0.14);
+    this.addLadder(group, new THREE.Vector3(4.9, 0.34, 5.18), 1.6, 0.38, dark, seed + 318, -0.18);
 
     return group;
   }
@@ -1843,6 +2035,9 @@ export class WorldLandmarks {
         this.addCable(group, new THREE.Vector3(-4.8 + i * 1.42, 1.02, 3.95), new THREE.Vector3(-4.8 + (i + 1) * 1.42, 1.02, 3.95), 0.06, 0.016, dark);
       }
     }
+    this.addCanopyStall(group, new THREE.Vector3(-2.4, 0.06, 4.1), 3.4, 2.1, 1.85, dark, hull, seed + 292, 0.06);
+    this.addTankBank(group, new THREE.Vector3(8.6, 0.04, -5.2), 3, 1.12, rust, dark, seed + 308, -0.18);
+    this.addLadder(group, new THREE.Vector3(-0.8, 0.34, 1.86), 2.5, 0.4, dark, seed + 324, 0);
 
     return group;
   }
@@ -2285,6 +2480,10 @@ export class WorldLandmarks {
     this.mesh(group, this.detailedBox(1.4, 0.16, 1.4, seed + 1206, 3, 2, 3, 0.01), paper, [5.8, 5.94, 3.6], 1, [0, 0.08, 0], false);
     this.addAntennaCluster(group, new THREE.Vector3(5.8, 6.08, 3.6), 0.34, dark, teal, seed + 1214);
     this.addWindowGrid(group, new THREE.Vector3(5.8, 1.0, 4.36), 2, 3, 0.64, 0.92, [0.2, 0.32, 0.1], dark);
+    this.addCanopyStall(group, new THREE.Vector3(-4.6, 0.08, -4.5), 3.4, 2.2, 1.95, dark, paper, seed + 1228, 0.34);
+    this.addCanopyStall(group, new THREE.Vector3(4.9, 0.08, -3.2), 2.9, 1.9, 1.8, dark, teal, seed + 1242, 0.14);
+    this.addLadder(group, new THREE.Vector3(5.12, 0.34, 4.08), 5.1, 0.42, dark, seed + 1258, 0.08);
+    this.addTankBank(group, new THREE.Vector3(6.9, 0.04, 5.4), 2, 1.08, paper, dark, seed + 1270, -0.16);
 
     return group;
   }
