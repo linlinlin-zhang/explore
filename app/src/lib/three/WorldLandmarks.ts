@@ -2712,16 +2712,29 @@ export class WorldLandmarks {
       }
 
       const distanceFade = THREE.MathUtils.smoothstep(z, -320, -120) * (1 - THREE.MathUtils.smoothstep(z, 8, 38));
-      group.visible = distanceFade > 0.01;
-      group.traverse((child) => {
-        if (child instanceof THREE.LineSegments || child instanceof THREE.Line) {
-          const mat = child.material as THREE.LineBasicMaterial;
-          mat.opacity = Math.min(0.62, (0.16 + (1 - this.progress) * 0.18) * distanceFade + 0.1);
-        }
-        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
-          child.material.opacity = child.material.opacity < 0.4 ? child.material.opacity : 0.38 + Math.sin(this.progress * Math.PI * 5 + def.seed) * 0.08;
-        }
-      });
+      const visible = distanceFade > 0.01;
+      const previousVisible = group.visible;
+      const lastFade = Number(group.userData.lastDistanceFade ?? -1);
+      const lastProgress = Number(group.userData.lastMaterialProgress ?? -1);
+      const shouldRefreshMaterials =
+        previousVisible !== visible ||
+        Math.abs(distanceFade - lastFade) > 0.018 ||
+        Math.abs(this.progress - lastProgress) > 0.018;
+
+      group.visible = visible;
+      if (shouldRefreshMaterials) {
+        group.traverse((child) => {
+          if (child instanceof THREE.LineSegments || child instanceof THREE.Line) {
+            const mat = child.material as THREE.LineBasicMaterial;
+            mat.opacity = Math.min(0.62, (0.16 + (1 - this.progress) * 0.18) * distanceFade + 0.1);
+          }
+          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
+            child.material.opacity = child.material.opacity < 0.4 ? child.material.opacity : 0.38 + Math.sin(this.progress * Math.PI * 5 + def.seed) * 0.08;
+          }
+        });
+        group.userData.lastDistanceFade = distanceFade;
+        group.userData.lastMaterialProgress = this.progress;
+      }
     });
 
     this.materials.forEach((material) => {

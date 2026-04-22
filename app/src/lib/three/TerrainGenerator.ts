@@ -275,7 +275,7 @@ export class TerrainGenerator {
 
   private generateTerrain() {
     const size = 520;
-    const segments = 380;
+    const segments = 352;
     this.geometry = new THREE.PlaneGeometry(size, size, segments, segments);
     this.geometry.rotateX(-Math.PI / 2);
 
@@ -304,8 +304,8 @@ export class TerrainGenerator {
   update(scrollOffset: number, dt: number, progress: number) {
     const shouldResample =
       !Number.isFinite(this.lastSampleOffset) ||
-      Math.abs(scrollOffset - this.lastSampleOffset) > 0.18 ||
-      Math.abs(progress - this.lastProgress) > 0.0018;
+      Math.abs(scrollOffset - this.lastSampleOffset) > 0.32 ||
+      Math.abs(progress - this.lastProgress) > 0.0032;
 
     if (shouldResample) {
       this.resampleTerrain(scrollOffset, progress);

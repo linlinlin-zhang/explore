@@ -11,6 +11,8 @@ interface LayerItem {
   speed: number;
   sway: number;
   scale: number;
+  lastFade: number;
+  lastVisible: boolean;
 }
 
 interface PaletteInput {
@@ -705,7 +707,7 @@ export class GraphicNovelLayers {
     group.position.set(baseX, baseY, -baseZ);
     group.scale.setScalar(scale);
     this.root.add(group);
-    this.items.push({ group, baseX, baseY, baseZ, speed, sway, scale });
+    this.items.push({ group, baseX, baseY, baseZ, speed, sway, scale, lastFade: -1, lastVisible: false });
   }
 
   private build() {
@@ -776,16 +778,25 @@ export class GraphicNovelLayers {
       const centerClear = THREE.MathUtils.smoothstep(Math.abs(item.group.position.x), 4.8, 9.3);
       const travelLanePreserve = THREE.MathUtils.lerp(1, centerClear, nearCamera * 0.66);
       const fade = THREE.MathUtils.clamp(fadeIn * fadeOut * travelLanePreserve, 0, 1);
-      item.group.visible = fade > 0.015;
-      item.group.traverse((child) => {
-        if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
-          const mat = child.material as THREE.Material & { opacity?: number };
-          if (typeof mat.opacity === 'number') {
-            const baseOpacity = Number(mat.userData.baseOpacity ?? 1);
-            mat.opacity = baseOpacity * fade;
+      const visible = fade > 0.015;
+      const shouldUpdateOpacity =
+        visible !== item.lastVisible ||
+        Math.abs(fade - item.lastFade) > 0.018;
+
+      item.group.visible = visible;
+      if (shouldUpdateOpacity) {
+        item.group.traverse((child) => {
+          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+            const mat = child.material as THREE.Material & { opacity?: number };
+            if (typeof mat.opacity === 'number') {
+              const baseOpacity = Number(mat.userData.baseOpacity ?? 1);
+              mat.opacity = baseOpacity * fade;
+            }
           }
-        }
-      });
+        });
+        item.lastFade = fade;
+        item.lastVisible = visible;
+      }
     });
   }
 

@@ -69,7 +69,7 @@ export class DesertParticles {
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.particleCount = 2600;
+    this.particleCount = 2200;
     
     this.material = new THREE.ShaderMaterial({
       vertexShader: ParticleVertexShader,

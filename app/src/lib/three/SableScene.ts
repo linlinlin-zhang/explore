@@ -244,6 +244,11 @@ export class SableScene {
   private depthMaterial!: THREE.MeshDepthMaterial;
   private outlinePass!: ShaderPass;
   private fxaaPass!: ShaderPass;
+  private depthPassTimer = 1;
+  private lastDepthOffset = Number.NaN;
+  private lastDepthProgress = Number.NaN;
+  private shadowUpdateTimer = 1;
+  private lastShadowOffset = Number.NaN;
 
   constructor(canvas: HTMLCanvasElement, onSemanticUpdate?: (items: SceneSemanticItem[]) => void) {
     this.canvas = canvas;
@@ -256,9 +261,10 @@ export class SableScene {
       powerPreference: 'high-performance',
     });
     this.renderer.setClearColor(0x7EC8C8, 1);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+    this.renderer.setPixelRatio(this.getRenderPixelRatio());
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
 
@@ -301,6 +307,23 @@ export class SableScene {
     this.handleResize();
   }
 
+  private getRenderPixelRatio(width = window.innerWidth, height = window.innerHeight) {
+    const dpr = window.devicePixelRatio || 1;
+    const area = Math.max(1, width) * Math.max(1, height);
+    let cap = 2.35;
+
+    if (area > 2_600_000) cap = 1.85;
+    else if (area > 1_700_000) cap = 2.0;
+    else if (area > 1_100_000) cap = 2.15;
+
+    return Math.min(dpr, cap);
+  }
+
+  private getShadowMapSize() {
+    const area = Math.max(1, window.innerWidth) * Math.max(1, window.innerHeight);
+    return area > 1_700_000 ? 2048 : 2560;
+  }
+
   private initLighting() {
     const palette = Palettes.day;
 
@@ -314,8 +337,9 @@ export class SableScene {
     this.sunLight = new THREE.DirectionalLight(palette.sun, 1.8);
     this.sunLight.position.set(20, 25, 15);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 3072;
-    this.sunLight.shadow.mapSize.height = 3072;
+    const shadowMapSize = this.getShadowMapSize();
+    this.sunLight.shadow.mapSize.width = shadowMapSize;
+    this.sunLight.shadow.mapSize.height = shadowMapSize;
     this.sunLight.shadow.camera.near = 0.5;
     this.sunLight.shadow.camera.far = 120;
     this.sunLight.shadow.camera.left = -50;
@@ -369,7 +393,7 @@ export class SableScene {
 
   private initPostProcessing() {
     this.composer = new EffectComposer(this.renderer);
-    this.composer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+    this.composer.setPixelRatio(this.renderer.getPixelRatio());
 
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
@@ -656,6 +680,7 @@ export class SableScene {
     this.updateTimeOfDay(dt);
 
     const worldOffset = this.journeyProgress * 672;
+    this.scheduleShadowRefresh(dt, worldOffset);
 
     // Move and resample the world, not just the camera. This keeps the page feeling
     // like one continuous traversal through changing biomes.
@@ -700,14 +725,27 @@ export class SableScene {
     );
     this.updateSemanticOverlay(dt);
 
-    // Render depth for outline
-    this.graphicLayers.setDepthPassVisible(false);
-    this.scene.overrideMaterial = this.depthMaterial;
-    this.renderer.setRenderTarget(this.depthRenderTarget);
-    this.renderer.render(this.scene, this.camera);
-    this.scene.overrideMaterial = null;
-    this.renderer.setRenderTarget(null);
-    this.graphicLayers.setDepthPassVisible(true);
+    // Render depth for outline when travel motion changes the scene, then reuse
+    // it briefly while only small animated details are moving.
+    this.depthPassTimer += dt;
+    const shouldRefreshDepth =
+      !Number.isFinite(this.lastDepthOffset) ||
+      Math.abs(worldOffset - this.lastDepthOffset) > 0.75 ||
+      Math.abs(this.journeyProgress - this.lastDepthProgress) > 0.0012 ||
+      this.depthPassTimer >= 0.22;
+
+    if (shouldRefreshDepth) {
+      this.graphicLayers.setDepthPassVisible(false);
+      this.scene.overrideMaterial = this.depthMaterial;
+      this.renderer.setRenderTarget(this.depthRenderTarget);
+      this.renderer.render(this.scene, this.camera);
+      this.scene.overrideMaterial = null;
+      this.renderer.setRenderTarget(null);
+      this.graphicLayers.setDepthPassVisible(true);
+      this.depthPassTimer = 0;
+      this.lastDepthOffset = worldOffset;
+      this.lastDepthProgress = this.journeyProgress;
+    }
 
     // Pass depth to outline shader
     this.outlinePass.uniforms.tDepth.value = this.depthRenderTarget.texture;
@@ -720,13 +758,26 @@ export class SableScene {
     this.composer.render();
   };
 
+  private scheduleShadowRefresh(dt: number, worldOffset: number) {
+    this.shadowUpdateTimer += dt;
+    const offsetChanged =
+      !Number.isFinite(this.lastShadowOffset) ||
+      Math.abs(worldOffset - this.lastShadowOffset) > 5.5;
+
+    if (offsetChanged || this.shadowUpdateTimer > 0.28) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowUpdateTimer = 0;
+      this.lastShadowOffset = worldOffset;
+    }
+  }
+
   private handleResize = () => {
     const bounds = this.canvas.parentElement?.getBoundingClientRect();
     const w = Math.round(bounds?.width || window.innerWidth || this.canvas.clientWidth);
     const h = Math.round(bounds?.height || window.innerHeight || this.canvas.clientHeight);
     if (w === 0 || h === 0) return;
 
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2.5);
+    const pixelRatio = this.getRenderPixelRatio(w, h);
     this.renderer.setPixelRatio(pixelRatio);
     this.composer.setPixelRatio(pixelRatio);
 
