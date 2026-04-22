@@ -1,0 +1,11 @@
+/app/node_modules/
+/app/dist/
+/app/dist-ssr/
+/app/*.log
+/_shots/
+/*.png
+*.local
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
