@@ -25,6 +25,10 @@ const LandmarkFragmentShader = `
   varying vec3 vWorldPos;
   varying float vDist;
 
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
   void main() {
     vec3 normal = normalize(vNormal);
     vec3 lightDir = normalize(vec3(
@@ -43,8 +47,14 @@ const LandmarkFragmentShader = `
 
     float strata = 1.0 - smoothstep(0.012, 0.048, abs(fract(vWorldPos.y * 0.82 + sin(vWorldPos.x * 0.12) * 0.08) - 0.5));
     float panel = 1.0 - smoothstep(0.012, 0.04, abs(fract(vWorldPos.x * 0.18 + vWorldPos.z * 0.12) - 0.5));
+    float shade = smoothstep(0.15, 0.82, 1.0 - cel);
+    float hatch = 1.0 - smoothstep(0.02, 0.08, abs(fract(vWorldPos.x * 0.34 + vWorldPos.y * 0.18 + vWorldPos.z * 0.08) - 0.5));
+    float crossHatch = 1.0 - smoothstep(0.015, 0.055, abs(fract(vWorldPos.x * -0.22 + vWorldPos.y * 0.24 + vWorldPos.z * 0.1) - 0.5));
+    float paper = hash(floor(vWorldPos.xz * 4.8 + vWorldPos.y * 0.7));
     color += uAccentColor * strata * 0.08;
     color = mix(color, color * 0.68, panel * 0.1);
+    color = mix(color, vec3(0.13, 0.08, 0.05), (hatch * 0.045 + crossHatch * 0.03) * shade);
+    color += (paper - 0.5) * 0.035;
 
     float fog = smoothstep(82.0, 330.0, vDist);
     color = mix(color, uSkyColor * 0.82, fog * 0.72);
@@ -1861,7 +1871,7 @@ export class WorldLandmarks {
   private generateLandmarks() {
     this.defs = [
       { kind: 'saltGate', x: 11, y: 0.2, z: 24, scale: 1.62, rotation: -0.22, seed: 10, poi: { id: 'threshold-gate', title: 'Threshold Gate', category: 'portal', description: 'The opening glyph gate that introduces the journey and the idea of entering a new context space.', tags: ['portal', 'entry', 'symbol'] } },
-      { kind: 'wall', x: -5.8, y: 0.2, z: 62, scale: 1.35, rotation: 0.08, seed: 20, poi: { id: 'archive-wall', title: 'Memory Wall', category: 'architecture', description: 'A monumental wall city that can later reveal linked references, research threads, and urban context.', tags: ['wall', 'city', 'research'] } },
+      { kind: 'wall', x: -10.4, y: 0.2, z: 62, scale: 1.35, rotation: 0.08, seed: 20, poi: { id: 'archive-wall', title: 'Memory Wall', category: 'architecture', description: 'A monumental wall city that can later reveal linked references, research threads, and urban context.', tags: ['wall', 'city', 'research'] } },
       { kind: 'rib', x: -14, y: 0.55, z: 102, scale: 1.9, rotation: 0.46, seed: 30, poi: { id: 'bone-dunes', title: 'Bone Dunes', category: 'creature', description: 'A skeletal landmark suggesting ecology, history, and extinct life forms for image-to-story expansions.', tags: ['skeleton', 'creature', 'history'] } },
       { kind: 'cliffCity', x: 8.2, y: 0.2, z: 142, scale: 1.52, rotation: -0.28, seed: 40, poi: { id: 'cliff-city', title: 'Cliff City', category: 'architecture', description: 'Layered canyon architecture that can anchor related images, maps, music, and contextual story threads.', tags: ['city', 'canyon', 'architecture'] } },
       { kind: 'ship', x: -13.5, y: 0.9, z: 184, scale: 1.34, rotation: -0.12, seed: 50, poi: { id: 'wreck-site', title: 'Wreck Site', category: 'vehicle', description: 'A crashed vessel for surfacing speculative history, engineering diagrams, and sound cues.', tags: ['spaceship', 'wreck', 'vehicle'] } },

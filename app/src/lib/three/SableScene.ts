@@ -11,6 +11,7 @@ import { SkyDome } from './SkyDome';
 import { HoverBike } from './HoverBike';
 import { WorldLandmarks, type LandmarkSemanticPoint } from './WorldLandmarks';
 import { InkDetailField } from './InkDetailField';
+import { GraphicNovelLayers } from './GraphicNovelLayers';
 
 export interface SceneSemanticItem extends LandmarkSemanticPoint {
   source: 'landmark' | 'bike';
@@ -25,6 +26,10 @@ const OutlineShader = {
     outlineColor: { value: new THREE.Color(0.14, 0.09, 0.05) },
     outlineThickness: { value: 1.85 },
     outlineIntensity: { value: 0.82 },
+    paperStrength: { value: 0.34 },
+    hatchStrength: { value: 0.18 },
+    progress: { value: 0 },
+    time: { value: 0 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -40,7 +45,15 @@ const OutlineShader = {
     uniform vec3 outlineColor;
     uniform float outlineThickness;
     uniform float outlineIntensity;
+    uniform float paperStrength;
+    uniform float hatchStrength;
+    uniform float progress;
+    uniform float time;
     varying vec2 vUv;
+
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+    }
     
     float sampleDepth(vec2 uv) {
       return texture2D(tDepth, uv).r;
@@ -74,7 +87,23 @@ const OutlineShader = {
       // Hard threshold for Sable's bold line look
       edge = smoothstep(0.05, 0.2, edge);
       
-      vec3 finalColor = mix(c, outlineColor, edge * outlineIntensity);
+      vec3 poster = floor(c * 7.0 + 0.5) / 7.0;
+      c = mix(c, poster, 0.18);
+
+      float grain = hash(vUv * resolution * 0.54 + floor(time * 7.0)) - 0.5;
+      float paperFibers =
+        sin((vUv.y + progress * 0.13) * resolution.y * 0.38) * 0.5 + 0.5;
+      float hatchA = 1.0 - smoothstep(0.035, 0.11, abs(fract((vUv.x + vUv.y * 0.32) * 58.0 + progress * 8.0) - 0.5));
+      float hatchB = 1.0 - smoothstep(0.02, 0.08, abs(fract((vUv.x * 0.42 - vUv.y) * 42.0 - progress * 5.0) - 0.5));
+      float shade = smoothstep(0.0, 0.72, 1.0 - dot(c, vec3(0.299, 0.587, 0.114)));
+      vec3 inked = mix(c, outlineColor, (hatchA * 0.06 + hatchB * 0.045) * hatchStrength * shade);
+      inked += grain * paperStrength * 0.075;
+      inked = mix(inked, inked * (0.96 + paperFibers * 0.045), paperStrength);
+
+      float vignette = smoothstep(0.9, 0.18, distance(vUv, vec2(0.5)));
+      inked = mix(inked * 0.86, inked, vignette);
+
+      vec3 finalColor = mix(inked, outlineColor, edge * outlineIntensity);
       gl_FragColor = vec4(finalColor, 1.0);
     }
   `,
@@ -190,6 +219,7 @@ export class SableScene {
   private terrain!: TerrainGenerator;
   private rocks!: ProceduralRocks;
   private landmarks!: WorldLandmarks;
+  private graphicLayers!: GraphicNovelLayers;
   private inkDetails!: InkDetailField;
   private particles!: DesertParticles;
   private sky!: SkyDome;
@@ -258,6 +288,7 @@ export class SableScene {
     this.initSky();
     this.initTerrain();
     this.initRocks();
+    this.initGraphicLayers();
     this.initLandmarks();
     this.initInkDetails();
     this.initParticles();
@@ -312,6 +343,10 @@ export class SableScene {
 
   private initRocks() {
     this.rocks = new ProceduralRocks(this.scene);
+  }
+
+  private initGraphicLayers() {
+    this.graphicLayers = new GraphicNovelLayers(this.scene);
   }
 
   private initLandmarks() {
@@ -467,17 +502,32 @@ export class SableScene {
       return bikeItems.slice(0, viewport.x < 760 ? 4 : 6);
     }
 
-    const maxTotal = viewport.x < 760 ? 4 : 6;
+    const maxTotal = viewport.x < 760 ? 4 : 5;
     const maxLandmarks = viewport.x < 760 ? 3 : 5;
-    const focusItems = (groups.get(this.activeSemanticSceneId) ?? [])
+    const rankedFocus = (groups.get(this.activeSemanticSceneId) ?? [])
       .sort((a, b) => {
         const ax = Math.abs(a.x / viewport.x - 0.5);
         const ay = Math.abs(a.y / viewport.y - 0.5);
         const bx = Math.abs(b.x / viewport.x - 0.5);
         const by = Math.abs(b.y / viewport.y - 0.5);
         return (ax + ay * 0.65 + a.depth * 0.08) - (bx + by * 0.65 + b.depth * 0.08);
-      })
-      .slice(0, maxLandmarks);
+      });
+    const focusItems: SceneSemanticItem[] = [];
+    rankedFocus.forEach((item) => {
+      if (focusItems.length >= maxLandmarks) return;
+      const farEnough = focusItems.every((placed) => {
+        const dx = placed.x - item.x;
+        const dy = placed.y - item.y;
+        return Math.hypot(dx, dy) > (viewport.x < 760 ? 68 : 96);
+      });
+      if (farEnough || focusItems.length < 2) focusItems.push(item);
+    });
+    if (focusItems.length < Math.min(maxLandmarks, rankedFocus.length)) {
+      rankedFocus.forEach((item) => {
+        if (focusItems.length >= maxLandmarks) return;
+        if (!focusItems.some((existing) => existing.id === item.id)) focusItems.push(item);
+      });
+    }
     const vehicleFocus = bikeItems
       .sort((a, b) => Math.abs(a.x / viewport.x - 0.5) - Math.abs(b.x / viewport.x - 0.5))
       .slice(0, focusItems.length < 2 ? Math.max(0, maxTotal - focusItems.length) : 0);
@@ -489,7 +539,7 @@ export class SableScene {
     if (!this.onSemanticUpdate) return;
 
     this.semanticTimer += dt;
-    if (this.semanticTimer < 0.08) return;
+    if (this.semanticTimer < 0.033) return;
     this.semanticTimer = 0;
 
     if (this.journeyProgress < 0.1 || this.journeyProgress > 0.86) {
@@ -502,7 +552,7 @@ export class SableScene {
 
     const items = this.collectSemanticItems();
     const signature = items
-      .map((item) => `${item.sceneId}:${item.id}:${Math.round(item.x)}:${Math.round(item.y)}:${item.source}`)
+      .map((item) => `${item.sceneId}:${item.id}:${Math.round(item.x * 2)}:${Math.round(item.y * 2)}:${item.source}`)
       .join('|');
     if (signature === this.lastSemanticSignature) return;
     this.lastSemanticSignature = signature;
@@ -578,6 +628,12 @@ export class SableScene {
     this.rocks.setColor(palette.rock);
     this.rocks.setSkyColor(palette.skyTop);
     this.landmarks.setPalette(palette.rock, palette.skyTop, palette.accent);
+    this.graphicLayers.setPalette({
+      terrain: palette.terrain,
+      rock: palette.rock,
+      sky: palette.skyTop,
+      accent: palette.accent,
+    });
     this.inkDetails.setInkColor(new THREE.Color(0x24170f).lerp(palette.rock, this.timeOfDay * 0.18));
     this.particles.setColor(palette.fog);
   }
@@ -601,12 +657,13 @@ export class SableScene {
     this.syncJourneyFromScroll();
     this.updateTimeOfDay(dt);
 
-    const worldOffset = this.journeyProgress * 360;
+    const worldOffset = this.journeyProgress * 640;
 
     // Move and resample the world, not just the camera. This keeps the page feeling
     // like one continuous traversal through changing biomes.
     this.terrain.update(worldOffset, dt, this.journeyProgress);
     this.rocks.update(worldOffset, dt, this.journeyProgress);
+    this.graphicLayers.update(worldOffset, dt, this.journeyProgress);
     this.landmarks.update(worldOffset, dt, this.journeyProgress);
     this.inkDetails.update(worldOffset, dt, this.journeyProgress);
 
@@ -646,14 +703,20 @@ export class SableScene {
     this.updateSemanticOverlay(dt);
 
     // Render depth for outline
+    this.graphicLayers.setDepthPassVisible(false);
     this.scene.overrideMaterial = this.depthMaterial;
     this.renderer.setRenderTarget(this.depthRenderTarget);
     this.renderer.render(this.scene, this.camera);
     this.scene.overrideMaterial = null;
     this.renderer.setRenderTarget(null);
+    this.graphicLayers.setDepthPassVisible(true);
 
     // Pass depth to outline shader
     this.outlinePass.uniforms.tDepth.value = this.depthRenderTarget.texture;
+    this.outlinePass.uniforms.time.value = elapsed;
+    this.outlinePass.uniforms.progress.value = this.journeyProgress;
+    this.outlinePass.uniforms.paperStrength.value = 0.22 + Math.sin(this.journeyProgress * Math.PI) * 0.18;
+    this.outlinePass.uniforms.hatchStrength.value = 0.16 + Math.sin(this.journeyProgress * Math.PI * 1.25) * 0.08;
 
     // Main render
     this.composer.render();
@@ -697,6 +760,7 @@ export class SableScene {
 
     this.terrain.dispose();
     this.rocks.dispose();
+    this.graphicLayers.dispose();
     this.landmarks.dispose();
     this.inkDetails.dispose();
     this.particles.dispose();

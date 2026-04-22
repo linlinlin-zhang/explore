@@ -122,8 +122,8 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
   const viewport = useViewport();
 
   const positioned = useMemo(() => {
-    const maxItems = viewport.width < 760 ? 4 : 6;
-    const margin = viewport.width < 760 ? 10 : 18;
+    const maxItems = viewport.width < 760 ? 4 : 5;
+    const margin = viewport.width < 760 ? 10 : 16;
     const sideCounts: Record<'left' | 'right', number> = { left: 0, right: 0 };
     const placed: Array<{ x: number; y: number; width: number; height: number }> = [];
 
@@ -132,10 +132,11 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
       const overlapX = Math.max(0, Math.min(x + width + gap, box.x + box.width + gap) - Math.max(x - gap, box.x - gap));
       const overlapY = Math.max(0, Math.min(y + height + gap, box.y + box.height + gap) - Math.max(y - gap, box.y - gap));
       if (overlapX === 0 || overlapY === 0) return sum;
-      return sum + 7.5 + (overlapX * overlapY) / Math.max(1, width * height) * 22;
+      return sum + 16 + (overlapX * overlapY) / Math.max(1, width * height) * 42;
     }, 0);
 
-    const clamped = items
+    const clamped = [...items]
+      .sort((a, b) => a.depth - b.depth)
       .filter((item) => item.y > 22 && item.y < viewport.height - 22)
       .slice(0, maxItems)
       .map((item, index) => {
@@ -145,13 +146,13 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
           : mode === 'image'
             ? 216
             : 236;
-        const panelHeight = mode === 'note' ? 118 : mode === 'image' ? 98 : 88;
+        const panelHeight = mode === 'note' ? 112 : mode === 'image' ? 98 : 86;
         const jitter = (hashString(item.id) % 54) - 27;
         const preferredDirection = item.x < viewport.width * 0.5 ? 1 : -1;
-        const verticalDrift = Math.sin(item.x * 0.013 + item.y * 0.017 + index) * 16 + jitter * 0.18;
-        const near = viewport.width < 760 ? 62 : 106;
-        const far = viewport.width < 760 ? 116 : 178;
-        const lift = viewport.width < 760 ? 48 : 68;
+        const verticalDrift = Math.sin(item.x * 0.011 + item.y * 0.019 + index * 1.7) * 18 + jitter * 0.16;
+        const near = viewport.width < 760 ? 54 : 92;
+        const far = viewport.width < 760 ? 106 : 154;
+        const lift = viewport.width < 760 ? 46 : 72;
 
         const makeFreeCandidate = (rawX: number, rawY: number, weight: number) => {
           const x = Math.min(viewport.width - panelWidth - margin, Math.max(margin, rawX));
@@ -161,9 +162,13 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
           const attachY = y + Math.min(panelHeight - 22, Math.max(24, item.y - y));
           const lineLength = Math.hypot(attachX - item.x, attachY - item.y);
           const clipPenalty = (Math.abs(x - rawX) + Math.abs(y - rawY)) * 0.012;
-          const linePenalty = Math.abs(lineLength - (viewport.width < 760 ? 96 : 140)) * 0.0025;
-          const balancePenalty = sideCounts[side] * 0.54;
-          const edgePenalty = (x <= margin + 2 || x >= viewport.width - panelWidth - margin - 2) ? 0.42 : 0;
+          const linePenalty = Math.abs(lineLength - (viewport.width < 760 ? 94 : 126)) * 0.0032;
+          const balancePenalty = sideCounts[side] * 1.18;
+          const edgeDistance = Math.min(x - margin, viewport.width - panelWidth - margin - x);
+          const edgePenalty = edgeDistance < 18 ? (18 - edgeDistance) * 0.018 : 0;
+          const panelCenter = (x + panelWidth * 0.5) / viewport.width;
+          const centerPilePenalty = Math.max(0, 0.18 - Math.abs(panelCenter - 0.5)) * 2.6;
+          const anchorPenalty = Math.abs((x + panelWidth * 0.5) - item.x) / viewport.width * 0.34;
 
           return {
             side,
@@ -173,7 +178,15 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
             attachY,
             lineLength,
             lineAngle: Math.atan2(attachY - item.y, attachX - item.x),
-            score: weight + clipPenalty + linePenalty + balancePenalty + edgePenalty + overlapPenalty(x, y, panelWidth, panelHeight),
+            score:
+              weight +
+              clipPenalty +
+              linePenalty +
+              balancePenalty +
+              edgePenalty +
+              centerPilePenalty +
+              anchorPenalty +
+              overlapPenalty(x, y, panelWidth, panelHeight),
           };
         };
 
@@ -198,11 +211,13 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
           makeCandidate(backward, far, -lift * 0.55, 0.28),
           makeCandidate(backward, far, lift * 0.6, 0.3),
           makeLaneCandidate(0.2, -lift * 0.36, 0.24),
-          makeLaneCandidate(0.36, lift * 0.22, 0.2),
-          makeLaneCandidate(0.64, -lift * 0.22, 0.2),
+          makeLaneCandidate(0.34, lift * 0.22, 0.26),
+          makeLaneCandidate(0.66, -lift * 0.22, 0.26),
           makeLaneCandidate(0.8, lift * 0.36, 0.24),
-          makeCandidate(forward, near * 0.7, -lift * 1.18, 0.36),
-          makeCandidate(forward, near * 0.7, lift * 1.18, 0.38),
+          makeCandidate(forward, near * 0.72, -lift * 1.12, 0.36),
+          makeCandidate(forward, near * 0.72, lift * 1.12, 0.38),
+          makeCandidate(backward, near * 0.72, -lift * 1.04, 0.44),
+          makeCandidate(backward, near * 0.72, lift * 1.04, 0.46),
         ];
         const best = candidates.sort((a, b) => a.score - b.score)[0];
         placed.push({ x: best.panelX, y: best.panelY, width: panelWidth, height: panelHeight });
@@ -246,7 +261,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 transformOrigin: '0 50%',
                 background: 'rgba(32, 20, 15, 0.72)',
                 boxShadow: '0 0 0 1px rgba(245, 235, 215, 0.18)',
-                transition: 'left 160ms linear, top 160ms linear, width 160ms linear, transform 160ms linear',
+                transition: 'left 90ms linear, top 90ms linear, width 90ms linear, transform 90ms linear',
               }}
             />
             <div
@@ -258,7 +273,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 height: 8,
                 border: '1px solid rgba(32, 20, 15, 0.72)',
                 background: 'rgba(245, 232, 205, 0.72)',
-                transition: 'left 160ms linear, top 160ms linear',
+                transition: 'left 90ms linear, top 90ms linear',
               }}
             />
             <div
@@ -268,21 +283,26 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 left: item.panelX,
                 top: item.panelY,
                 width: item.panelWidth,
+                height: item.panelHeight,
                 color: '#21140f',
                 fontFamily: "'Quattrocento Sans', sans-serif",
                 textAlign: item.side === 'left' ? 'right' : 'left',
                 opacity: 0.92,
-                transition: 'left 160ms linear, top 160ms linear, opacity 160ms ease',
+                transition: 'left 90ms linear, top 90ms linear, opacity 130ms ease',
               }}
             >
               <div
-                className="inline-flex items-center gap-2"
+                className="flex items-center gap-2"
                 style={{
+                  width: item.panelWidth,
+                  height: item.panelHeight,
+                  boxSizing: 'border-box',
                   border: '1px solid rgba(32, 20, 15, 0.28)',
                   background: 'rgba(245, 232, 205, 0.52)',
                   backdropFilter: 'blur(7px)',
                   padding: item.mode === 'image' ? 8 : '7px 10px',
                   maxWidth: item.panelWidth,
+                  overflow: 'hidden',
                 }}
               >
                 {item.mode === 'image' ? (
