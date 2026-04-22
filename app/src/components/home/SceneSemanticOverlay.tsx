@@ -118,19 +118,46 @@ function getPanelText(item: SceneSemanticItem, mode: SemanticMode) {
   return item.description;
 }
 
+function getPanelHref(item: SceneSemanticItem, mode: SemanticMode) {
+  const rawCategoryLink = linkByCategory[item.category] ?? 'wikipedia.org/wiki/Association';
+  const normalizedCategoryLink = rawCategoryLink.startsWith('http') ? rawCategoryLink : `https://${rawCategoryLink}`;
+
+  if (mode === 'link') return normalizedCategoryLink;
+  if (mode === 'music') {
+    const term = encodeURIComponent((musicByCategory[item.category] ?? item.title).replace(/\s+-\s+/g, ' '));
+    return `https://bandcamp.com/search?q=${term}`;
+  }
+  if (mode === 'image') {
+    const term = encodeURIComponent(item.tags.slice(0, 3).join(' ') || item.title);
+    return `https://unsplash.com/s/photos/${term}`;
+  }
+  const term = encodeURIComponent(item.title);
+  return `https://www.google.com/search?q=${term}`;
+}
+
+function getPanelHrefLabel(item: SceneSemanticItem, mode: SemanticMode) {
+  if (mode === 'link') {
+    return linkByCategory[item.category] ?? 'wikipedia.org/wiki/Association';
+  }
+  if (mode === 'music') {
+    return 'bandcamp.com/search';
+  }
+  if (mode === 'image') {
+    return 'unsplash.com/search';
+  }
+  return 'google.com/search';
+}
+
 export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProps) {
   const viewport = useViewport();
 
   const positioned = useMemo(() => {
     const maxItems = viewport.width < 760 ? 4 : 5;
     const margin = viewport.width < 760 ? 10 : 18;
-    const sideCounts: Record<'left' | 'right', number> = { left: 0, right: 0 };
-    const quadrantCounts = new Map<string, number>();
     const placed: Array<{ x: number; y: number; width: number; height: number }> = [];
-    const columnTargets = viewport.width < 760 ? [0.18, 0.82] : [0.16, 0.34, 0.66, 0.84];
 
     const overlapPenalty = (x: number, y: number, width: number, height: number) => placed.reduce((sum, box) => {
-      const gap = 18;
+      const gap = viewport.width < 760 ? 14 : 20;
       const overlapX = Math.max(0, Math.min(x + width + gap, box.x + box.width + gap) - Math.max(x - gap, box.x - gap));
       const overlapY = Math.max(0, Math.min(y + height + gap, box.y + box.height + gap) - Math.max(y - gap, box.y - gap));
       if (overlapX === 0 || overlapY === 0) return sum;
@@ -150,38 +177,48 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
             : 236;
         const panelHeight = mode === 'note' ? 112 : mode === 'image' ? 98 : 86;
         const jitter = (hashString(item.id) % 54) - 27;
-        const preferredDirection = item.x < viewport.width * 0.5 ? 1 : -1;
-        const verticalDrift = Math.sin(item.x * 0.011 + item.y * 0.019 + index * 1.7) * 18 + jitter * 0.16;
-        const near = viewport.width < 760 ? 54 : 92;
-        const far = viewport.width < 760 ? 106 : 154;
-        const lift = viewport.width < 760 ? 46 : 72;
+        const centerX = viewport.width * 0.5;
+        const centerY = viewport.height * 0.5;
+        const centerBias = 1 - Math.min(1, Math.abs(item.x - centerX) / (viewport.width * 0.5));
+        const directionBias = item.x < centerX
+          ? 1
+          : item.x > centerX
+            ? -1
+            : (hashString(item.id) % 2 === 0 ? 1 : -1);
+        const verticalBias = item.y < centerY ? 1 : -1;
+        const horizontalNear = viewport.width < 760 ? 34 : 56;
+        const horizontalFar = viewport.width < 760 ? 58 : 92;
+        const horizontalEdge = viewport.width < 760 ? 92 : 156;
+        const verticalNear = viewport.width < 760 ? 24 : 34;
+        const verticalFar = viewport.width < 760 ? 44 : 58;
+        const lateralDrift = Math.sin(item.x * 0.012 + item.y * 0.018 + index * 1.4) * 12 + jitter * 0.18;
+        const verticalDrift = Math.cos(item.y * 0.014 + index * 1.3) * 10;
+        const leftEdgeInset = viewport.width < 760 ? 12 : 18;
+        const rightEdgeInset = viewport.width < 760 ? 12 : 18;
+        const edgeLaneOffset = viewport.width < 760 ? 0 : 22 + (hashString(item.id) % 2) * 28;
 
         const makeFreeCandidate = (rawX: number, rawY: number, weight: number) => {
           const x = Math.min(viewport.width - panelWidth - margin, Math.max(margin, rawX));
-          const y = Math.min(viewport.height - panelHeight - margin, Math.max(38, rawY));
+          const y = Math.min(viewport.height - panelHeight - margin, Math.max(28, rawY));
           const side: 'left' | 'right' = x + panelWidth * 0.5 < item.x ? 'left' : 'right';
-          const attachX = side === 'left' ? x + panelWidth : x;
-          const attachY = y + Math.min(panelHeight - 22, Math.max(24, item.y - y));
+          const attachX = side === 'left'
+            ? x + panelWidth
+            : x;
+          const attachY = Math.min(y + panelHeight - 18, Math.max(y + 18, item.y));
           const lineLength = Math.hypot(attachX - item.x, attachY - item.y);
           const clipPenalty = (Math.abs(x - rawX) + Math.abs(y - rawY)) * 0.012;
-          const linePenalty = Math.abs(lineLength - (viewport.width < 760 ? 88 : 118)) * 0.0026;
-          const balancePenalty = sideCounts[side] * 1.18;
+          const linePenalty = Math.abs(lineLength - (viewport.width < 760 ? 74 : 96)) * 0.0032;
           const edgeDistance = Math.min(x - margin, viewport.width - panelWidth - margin - x);
-          const edgePenalty = edgeDistance < 10 ? (10 - edgeDistance) * 0.03 : 0;
+          const edgePenalty = edgeDistance < 8 ? (8 - edgeDistance) * 0.06 : 0;
           const panelCenter = (x + panelWidth * 0.5) / viewport.width;
-          const nearestColumn = columnTargets.reduce((best, column) => (
-            Math.abs(column - panelCenter) < Math.abs(best - panelCenter) ? column : best
-          ), columnTargets[0]);
-          const columnPenalty = Math.abs(panelCenter - nearestColumn) * 1.2;
-          const centerPilePenalty = Math.max(0, 0.1 - Math.abs(panelCenter - 0.5)) * 1.4;
-          const anchorPenalty = Math.abs((x + panelWidth * 0.5) - item.x) / viewport.width * 0.22;
-          const verticalBand = y + panelHeight * 0.5 < viewport.height * 0.5 ? 'top' : 'bottom';
-          const quadrantKey = `${side}-${verticalBand}`;
-          const quadrantPenalty = (quadrantCounts.get(quadrantKey) ?? 0) * 1.34;
+          const centerPilePenalty = Math.max(0, 0.16 - Math.abs(panelCenter - 0.5)) * 2.4;
+          const anchorPenalty = Math.abs((x + panelWidth * 0.5) - item.x) / viewport.width * 0.26;
+          const verticalAnchorPenalty = Math.abs((y + panelHeight * 0.5) - item.y) / viewport.height * 0.22;
+          const directCenterPenalty = Math.abs(item.x - centerX) < panelWidth * 0.52 && Math.abs(item.y - centerY) < panelHeight * 0.78 ? 0.32 : 0;
+          const farFromAnchorBonus = lineLength > horizontalEdge ? -0.06 : 0;
 
           return {
             side,
-            quadrantKey,
             panelX: x,
             panelY: y,
             attachX,
@@ -192,49 +229,66 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
               weight +
               clipPenalty +
               linePenalty +
-              balancePenalty +
-              quadrantPenalty +
               edgePenalty +
-              columnPenalty +
               centerPilePenalty +
               anchorPenalty +
+              verticalAnchorPenalty +
+              directCenterPenalty +
+              farFromAnchorBonus +
               overlapPenalty(x, y, panelWidth, panelHeight),
           };
         };
 
-        const makeCandidate = (direction: -1 | 1, distance: number, dy: number, weight: number) => makeFreeCandidate(
-          direction < 0 ? item.x - panelWidth - distance : item.x + distance,
-          item.y - panelHeight * 0.5 + dy + verticalDrift,
-          weight
-        );
-        const makeLaneCandidate = (ratio: number, dy: number, weight: number) => makeFreeCandidate(
-          viewport.width * ratio - panelWidth * 0.5 + jitter * 0.08,
-          item.y - panelHeight * 0.5 + dy + verticalDrift * 0.65,
+        const makeCandidate = (direction: -1 | 1, dx: number, dy: number, weight: number) => makeFreeCandidate(
+          direction < 0 ? item.x - panelWidth - dx : item.x + dx,
+          item.y - panelHeight * 0.5 + dy,
           weight
         );
 
-        const forward = preferredDirection as -1 | 1;
-        const backward = -preferredDirection as -1 | 1;
+        const makeEdgeCandidate = (side: -1 | 1, dy: number, weight: number) => makeFreeCandidate(
+          side < 0
+            ? leftEdgeInset + edgeLaneOffset
+            : viewport.width - panelWidth - rightEdgeInset - edgeLaneOffset,
+          item.y - panelHeight * 0.5 + dy,
+          weight
+        );
+
+        const forward = directionBias as -1 | 1;
+        const backward = -directionBias as -1 | 1;
+        const edgeForwardWeight = 0.08 - centerBias * 0.16;
+        const edgeBackwardWeight = 0.18 - centerBias * 0.08;
         const candidates = [
-          makeCandidate(forward, near, 0, 0),
-          makeCandidate(forward, far, -lift * 0.5, 0.08),
-          makeCandidate(forward, far, lift * 0.55, 0.1),
-          makeCandidate(backward, near, 0, 0.22),
-          makeCandidate(backward, far, -lift * 0.55, 0.28),
-          makeCandidate(backward, far, lift * 0.6, 0.3),
-          makeLaneCandidate(0.16, -lift * 0.36, 0.24),
-          makeLaneCandidate(0.32, lift * 0.22, 0.26),
-          makeLaneCandidate(0.68, -lift * 0.22, 0.26),
-          makeLaneCandidate(0.84, lift * 0.36, 0.24),
-          makeCandidate(forward, near * 0.72, -lift * 1.12, 0.36),
-          makeCandidate(forward, near * 0.72, lift * 1.12, 0.38),
-          makeCandidate(backward, near * 0.72, -lift * 1.04, 0.44),
-          makeCandidate(backward, near * 0.72, lift * 1.04, 0.46),
+          makeCandidate(forward, horizontalNear, verticalDrift * 0.4 + lateralDrift * 0.1, 0),
+          makeCandidate(forward, horizontalFar, -verticalNear + verticalDrift, 0.05),
+          makeCandidate(forward, horizontalFar, verticalNear + verticalDrift, 0.06),
+          makeCandidate(forward, horizontalEdge, verticalDrift * 0.55, 0.08),
+          makeCandidate(backward, horizontalNear, verticalDrift * 0.4 - lateralDrift * 0.1, 0.14),
+          makeCandidate(backward, horizontalFar, -verticalNear + verticalDrift, 0.18),
+          makeCandidate(backward, horizontalFar, verticalNear + verticalDrift, 0.19),
+          makeCandidate(backward, horizontalEdge, verticalDrift * 0.55, 0.2),
+          makeFreeCandidate(
+            item.x - panelWidth * 0.5 + lateralDrift * 0.4,
+            item.y - panelHeight - verticalFar * verticalBias + verticalDrift,
+            0.22
+          ),
+          makeFreeCandidate(
+            item.x - panelWidth * 0.5 + lateralDrift * 0.4,
+            item.y + verticalFar * verticalBias + verticalDrift,
+            0.24
+          ),
+          makeCandidate(forward, horizontalNear * 0.72, -verticalFar, 0.28),
+          makeCandidate(forward, horizontalNear * 0.72, verticalFar, 0.3),
+          makeCandidate(backward, horizontalNear * 0.72, -verticalFar, 0.34),
+          makeCandidate(backward, horizontalNear * 0.72, verticalFar, 0.36),
+          makeEdgeCandidate(forward, verticalDrift * 0.9, edgeForwardWeight),
+          makeEdgeCandidate(forward, -verticalFar * 0.9 + verticalDrift, edgeForwardWeight + 0.03),
+          makeEdgeCandidate(forward, verticalFar * 0.9 + verticalDrift, edgeForwardWeight + 0.04),
+          makeEdgeCandidate(backward, verticalDrift * 0.8, edgeBackwardWeight),
+          makeEdgeCandidate(backward, -verticalFar + verticalDrift, edgeBackwardWeight + 0.04),
+          makeEdgeCandidate(backward, verticalFar + verticalDrift, edgeBackwardWeight + 0.05),
         ];
         const best = candidates.sort((a, b) => a.score - b.score)[0];
         placed.push({ x: best.panelX, y: best.panelY, width: panelWidth, height: panelHeight });
-        sideCounts[best.side] += 1;
-        quadrantCounts.set(best.quadrantKey, (quadrantCounts.get(best.quadrantKey) ?? 0) + 1);
 
         return {
           ...item,
@@ -261,6 +315,8 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
       {positioned.map((item) => {
         const Icon = getIcon(item.mode);
         const panelText = getPanelText(item, item.mode);
+        const panelHref = getPanelHref(item, item.mode);
+        const panelHrefLabel = getPanelHrefLabel(item, item.mode);
 
         return (
           <div key={item.id}>
@@ -274,7 +330,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 transformOrigin: '0 50%',
                 background: 'rgba(32, 20, 15, 0.72)',
                 boxShadow: '0 0 0 1px rgba(245, 235, 215, 0.18)',
-                transition: 'left 55ms linear, top 55ms linear, width 55ms linear, transform 55ms linear',
+                transition: 'left 18ms linear, top 18ms linear, width 18ms linear, transform 18ms linear',
               }}
             />
             <div
@@ -286,7 +342,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 height: 8,
                 border: '1px solid rgba(32, 20, 15, 0.72)',
                 background: 'rgba(245, 232, 205, 0.72)',
-                transition: 'left 55ms linear, top 55ms linear',
+                transition: 'left 18ms linear, top 18ms linear',
               }}
             />
             <div
@@ -301,11 +357,15 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 fontFamily: "'Quattrocento Sans', sans-serif",
                 textAlign: item.side === 'left' ? 'right' : 'left',
                 opacity: 0.92,
-                transition: 'left 55ms linear, top 55ms linear, opacity 110ms ease',
+                transition: 'left 18ms linear, top 18ms linear, opacity 90ms ease',
+                willChange: 'left, top',
               }}
             >
-              <div
-                className="flex items-center gap-2"
+              <a
+                href={panelHref}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 pointer-events-auto"
                 style={{
                   width: item.panelWidth,
                   height: item.panelHeight,
@@ -316,6 +376,9 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                   padding: item.mode === 'image' ? 8 : '7px 10px',
                   maxWidth: item.panelWidth,
                   overflow: 'hidden',
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  cursor: 'pointer',
                 }}
               >
                 {item.mode === 'image' ? (
@@ -370,8 +433,22 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                   >
                     {panelText}
                   </div>
+                  <div
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 9,
+                      lineHeight: 1.25,
+                      marginTop: 4,
+                      color: 'rgba(32, 20, 15, 0.56)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {panelHrefLabel}
+                  </div>
                 </div>
-              </div>
+              </a>
             </div>
           </div>
         );

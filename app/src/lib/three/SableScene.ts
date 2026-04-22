@@ -24,10 +24,10 @@ const OutlineShader = {
     tDepth: { value: null },
     resolution: { value: new THREE.Vector2() },
     outlineColor: { value: new THREE.Color(0.14, 0.09, 0.05) },
-    outlineThickness: { value: 1.85 },
+    outlineThickness: { value: 1.3 },
     outlineIntensity: { value: 0.82 },
-    paperStrength: { value: 0.34 },
-    hatchStrength: { value: 0.18 },
+    paperStrength: { value: 0.18 },
+    hatchStrength: { value: 0.1 },
     progress: { value: 0 },
     time: { value: 0 },
   },
@@ -88,7 +88,7 @@ const OutlineShader = {
       edge = smoothstep(0.05, 0.2, edge);
       
       vec3 poster = floor(c * 7.0 + 0.5) / 7.0;
-      c = mix(c, poster, 0.18);
+      c = mix(c, poster, 0.1);
 
       float grain = hash(vUv * resolution * 0.54 + floor(time * 7.0)) - 0.5;
       float paperFibers =
@@ -96,12 +96,12 @@ const OutlineShader = {
       float hatchA = 1.0 - smoothstep(0.035, 0.11, abs(fract((vUv.x + vUv.y * 0.32) * 58.0 + progress * 8.0) - 0.5));
       float hatchB = 1.0 - smoothstep(0.02, 0.08, abs(fract((vUv.x * 0.42 - vUv.y) * 42.0 - progress * 5.0) - 0.5));
       float shade = smoothstep(0.0, 0.72, 1.0 - dot(c, vec3(0.299, 0.587, 0.114)));
-      vec3 inked = mix(c, outlineColor, (hatchA * 0.06 + hatchB * 0.045) * hatchStrength * shade);
-      inked += grain * paperStrength * 0.075;
-      inked = mix(inked, inked * (0.96 + paperFibers * 0.045), paperStrength);
+      vec3 inked = mix(c, outlineColor, (hatchA * 0.045 + hatchB * 0.03) * hatchStrength * shade);
+      inked += grain * paperStrength * 0.04;
+      inked = mix(inked, inked * (0.985 + paperFibers * 0.02), paperStrength);
 
       float vignette = smoothstep(0.9, 0.18, distance(vUv, vec2(0.5)));
-      inked = mix(inked * 0.86, inked, vignette);
+      inked = mix(inked * 0.94, inked, vignette);
 
       vec3 finalColor = mix(inked, outlineColor, edge * outlineIntensity);
       gl_FragColor = vec4(finalColor, 1.0);
@@ -243,6 +243,7 @@ export class SableScene {
   private depthRenderTarget!: THREE.WebGLRenderTarget;
   private depthMaterial!: THREE.MeshDepthMaterial;
   private outlinePass!: ShaderPass;
+  private fxaaPass!: ShaderPass;
 
   constructor(canvas: HTMLCanvasElement, onSemanticUpdate?: (items: SceneSemanticItem[]) => void) {
     this.canvas = canvas;
@@ -270,7 +271,7 @@ export class SableScene {
       0.1,
       900
     );
-    this.camera.position.set(0, 3.7, 18.1);
+    this.camera.position.set(0, 3.7, 17.3);
     this.camera.lookAt(0, 1.8, 0);
 
     // Depth render target for outline effect
@@ -378,9 +379,10 @@ export class SableScene {
     this.outlinePass.uniforms.resolution.value.set(size.x, size.y);
     this.composer.addPass(this.outlinePass);
 
-    const fxaaPass = new ShaderPass(FXAAShader);
-    fxaaPass.uniforms.resolution.value.set(1 / size.x, 1 / size.y);
-    this.composer.addPass(fxaaPass);
+    this.fxaaPass = new ShaderPass(FXAAShader);
+    this.fxaaPass.uniforms.resolution.value.set(1 / size.x, 1 / size.y);
+    this.fxaaPass.enabled = this.renderer.getPixelRatio() <= 1.25;
+    this.composer.addPass(this.fxaaPass);
 
     this.composer.addPass(new OutputPass());
   }
@@ -539,7 +541,7 @@ export class SableScene {
     if (!this.onSemanticUpdate) return;
 
     this.semanticTimer += dt;
-    if (this.semanticTimer < 0.033) return;
+    if (this.semanticTimer < 0.016) return;
     this.semanticTimer = 0;
 
     if (this.journeyProgress < 0.1 || this.journeyProgress > 0.86) {
@@ -551,11 +553,7 @@ export class SableScene {
     }
 
     const items = this.collectSemanticItems();
-    const signature = items
-      .map((item) => `${item.sceneId}:${item.id}:${Math.round(item.x * 2)}:${Math.round(item.y * 2)}:${item.source}`)
-      .join('|');
-    if (signature === this.lastSemanticSignature) return;
-    this.lastSemanticSignature = signature;
+    this.lastSemanticSignature = items.map((item) => `${item.sceneId}:${item.id}`).join('|');
     this.onSemanticUpdate(items);
   }
 
@@ -598,7 +596,7 @@ export class SableScene {
     // Apply to scene
     this.renderer.setClearColor(palette.skyTop, 1);
     (this.scene.fog as THREE.FogExp2).color.copy(palette.fog);
-    const fogDensity = 0.00315 + Math.sin(this.journeyProgress * Math.PI) * 0.0021 + this.timeOfDay * 0.00155;
+    const fogDensity = 0.00255 + Math.sin(this.journeyProgress * Math.PI) * 0.00155 + this.timeOfDay * 0.00115;
     (this.scene.fog as THREE.FogExp2).density = fogDensity;
 
     this.hemiLight.color.copy(palette.skyTop);
@@ -692,13 +690,13 @@ export class SableScene {
       Math.sin(this.journeyProgress * Math.PI * 2.6) * 0.96 +
       Math.sin(camTime * 0.56) * 0.12 +
       px * 0.26;
-    this.camera.position.z = 18.2 - progressWave * 2.45;
-    this.camera.fov = 49.5 + progressWave * 1.85;
+    this.camera.position.z = 17.4 - progressWave * 2.2;
+    this.camera.fov = 48.6 + progressWave * 1.45;
     this.camera.updateProjectionMatrix();
     this.camera.lookAt(
       Math.sin(this.journeyProgress * Math.PI * 1.9) * 0.58 + px * 0.18,
       1.95 + progressWave * 0.48 - py * 0.12,
-      -10.6 - progressWave * 3.4
+      -9.8 - progressWave * 3.0
     );
     this.updateSemanticOverlay(dt);
 
@@ -715,8 +713,8 @@ export class SableScene {
     this.outlinePass.uniforms.tDepth.value = this.depthRenderTarget.texture;
     this.outlinePass.uniforms.time.value = elapsed;
     this.outlinePass.uniforms.progress.value = this.journeyProgress;
-    this.outlinePass.uniforms.paperStrength.value = 0.3 + Math.sin(this.journeyProgress * Math.PI) * 0.16;
-    this.outlinePass.uniforms.hatchStrength.value = 0.2 + Math.sin(this.journeyProgress * Math.PI * 1.25) * 0.07;
+    this.outlinePass.uniforms.paperStrength.value = 0.14 + Math.sin(this.journeyProgress * Math.PI) * 0.06;
+    this.outlinePass.uniforms.hatchStrength.value = 0.08 + Math.sin(this.journeyProgress * Math.PI * 1.25) * 0.04;
 
     // Main render
     this.composer.render();
@@ -728,7 +726,7 @@ export class SableScene {
     const h = Math.round(bounds?.height || window.innerHeight || this.canvas.clientHeight);
     if (w === 0 || h === 0) return;
 
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2.25);
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2.5);
     this.renderer.setPixelRatio(pixelRatio);
     this.composer.setPixelRatio(pixelRatio);
 
@@ -743,9 +741,9 @@ export class SableScene {
     this.depthRenderTarget.setSize(bufferSize.x, bufferSize.y);
 
     this.outlinePass.uniforms.resolution.value.set(bufferSize.x, bufferSize.y);
-    const fxaaPass = this.composer.passes[2] as ShaderPass;
-    if (fxaaPass) {
-      fxaaPass.uniforms.resolution.value.set(1 / bufferSize.x, 1 / bufferSize.y);
+    if (this.fxaaPass) {
+      this.fxaaPass.uniforms.resolution.value.set(1 / bufferSize.x, 1 / bufferSize.y);
+      this.fxaaPass.enabled = pixelRatio <= 1.25;
     }
   };
 

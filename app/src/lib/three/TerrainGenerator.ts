@@ -89,8 +89,8 @@ const TerrainFragmentShader = `
     sandColor += paperNoise * 0.035;
     
     // Atmospheric perspective: distant terrain fades to sky color
-    float fogAmount = smoothstep(52.0, 310.0, vDist);
-    sandColor = mix(sandColor, uSkyColor * 0.82, fogAmount * 0.62);
+    float fogAmount = smoothstep(68.0, 340.0, vDist);
+    sandColor = mix(sandColor, uSkyColor * 0.84, fogAmount * 0.48);
     
     gl_FragColor = vec4(sandColor, 1.0);
   }
