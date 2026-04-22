@@ -1527,6 +1527,12 @@ export class WorldLandmarks {
     this.mesh(group, new THREE.SphereGeometry(0.78, 10, 8), teal, [8.8, 4.3, 2.4], [1, 0.74, 1], [0, 0, 0], false);
     this.addPergola(group, new THREE.Vector3(7.0, 0.08, -4.1), 3.2, 2.2, 2.05, dark, stone, seed + 372, -0.48);
     this.addBridge(group, new THREE.Vector3(-1.6, 0.2, 4.6), new THREE.Vector3(2.4, 0.2, 4.2), 0.72, 0.08, dark, stone);
+    this.mesh(group, this.detailedCylinder(1.0, 1.2, 0.42, 14, 4, seed + 378, 0.014), stone, [6.0, 0.24, 5.2], 1, [0, 0, 0], false);
+    this.mesh(group, new THREE.CircleGeometry(0.82, 22), water, [6.0, 0.48, 5.2], [1, 1, 1], [-Math.PI / 2, 0, 0], false);
+    this.addRailing(group, new THREE.Vector3(-5.7, 0.1, 5.8), new THREE.Vector3(-1.6, 0.1, 5.1), 0.48, dark, seed + 382);
+    this.addRailing(group, new THREE.Vector3(-1.6, 0.1, 5.1), new THREE.Vector3(1.2, 0.1, 6.1), 0.48, dark, seed + 390);
+    this.addRailing(group, new THREE.Vector3(3.8, 0.1, -5.7), new THREE.Vector3(7.2, 0.1, -6.2), 0.46, dark, seed + 398);
+    this.addRailing(group, new THREE.Vector3(7.2, 0.1, -6.2), new THREE.Vector3(9.4, 0.1, -4.4), 0.46, dark, seed + 406);
 
     for (let i = 0; i < 4; i += 1) {
       this.mesh(
@@ -1539,6 +1545,14 @@ export class WorldLandmarks {
         false
       );
     }
+    this.addCrateStack(group, new THREE.Vector3(-8.8, 0.04, 2.9), [0.78, 0.32, 0.64], 3, stone, dark, seed + 412, 0.18);
+    this.addCrateStack(group, new THREE.Vector3(7.0, 0.04, -1.6), [0.72, 0.28, 0.58], 2, blush, dark, seed + 418, -0.22);
+    for (let i = 0; i < 3; i += 1) {
+      this.mesh(group, this.detailedCylinder(0.18, 0.22, 0.58 + i * 0.08, 10, 4, seed + 426 + i, 0.01), i % 2 === 0 ? stone : blush, [5.2 + i * 0.52, 0.34, 4.1 + (i % 2) * 0.26], 1, [0, 0, 0], false);
+    }
+    this.mesh(group, this.detailedBox(1.2, 0.22, 0.52, seed + 434, 2, 2, 2, 0.01), stone, [-3.2, 0.22, 5.1], 1, [0, 0.12, 0], false);
+    this.mesh(group, this.detailedBox(1.4, 0.18, 0.46, seed + 438, 2, 2, 2, 0.01), blush, [3.4, 0.2, -4.4], 1, [0, -0.14, 0], false);
+    this.addAntennaCluster(group, new THREE.Vector3(8.8, 4.9, 2.4), 0.42, dark, teal, seed + 444);
     this.addDishRig(group, new THREE.Vector3(6.6, 0.1, 5.5), 0.92, 2.2, dark, teal, seed + 420, 0.22);
 
     for (let i = 0; i < 14; i += 1) {
@@ -1660,6 +1674,11 @@ export class WorldLandmarks {
     this.addWindowGrid(group, new THREE.Vector3(5.8, 0.88, 5.26), 3, 2, 0.92, 0.7, [0.34, 0.38, 0.12], dark);
     this.addPergola(group, new THREE.Vector3(6.1, 0.06, -4.5), 3.2, 2.2, 2.1, dark, hull, seed + 186, -0.2);
     this.addDishRig(group, new THREE.Vector3(6.8, 1.96, 4.8), 0.82, 1.8, dark, teal, seed + 190, -0.4);
+    this.addBridge(group, new THREE.Vector3(2.0, 0.44, 1.1), new THREE.Vector3(5.0, 0.54, 3.0), 0.58, 0.08, dark, rust);
+    this.addRailing(group, new THREE.Vector3(1.9, 0.48, 1.0), new THREE.Vector3(4.9, 0.58, 2.92), 0.54, dark, seed + 194, false);
+    this.mesh(group, this.detailedBox(1.0, 0.16, 2.0, seed + 198, 2, 2, 3, 0.01), dark, [2.6, 2.9, 0.42], 1, [0, 0.18, 0.22], false);
+    this.mesh(group, this.detailedBox(0.8, 0.14, 1.8, seed + 204, 2, 2, 3, 0.01), dark, [-2.4, 5.8, 0.1], 1, [0, -0.12, -0.18], false);
+    this.addCable(group, new THREE.Vector3(2.6, 2.92, 1.36), new THREE.Vector3(0.2, 6.6, 0.2), 0.52, 0.028, dark);
     for (let i = 0; i < 7; i += 1) {
       this.mesh(
         group,
@@ -1682,6 +1701,9 @@ export class WorldLandmarks {
         false
       );
     }
+    this.addCrateStack(group, new THREE.Vector3(-5.8, 0.04, -4.2), [0.82, 0.3, 0.62], 3, hull, dark, seed + 268, 0.12);
+    this.addCrateStack(group, new THREE.Vector3(6.7, 0.04, -5.0), [0.72, 0.28, 0.58], 2, rust, dark, seed + 276, -0.18);
+    this.addAntennaCluster(group, new THREE.Vector3(6.8, 2.18, 4.9), 0.4, dark, teal, seed + 282);
 
     return group;
   }
@@ -2192,6 +2214,14 @@ export class WorldLandmarks {
       [0.32, 0.34, 0.1],
       dark
     );
+    this.mesh(group, this.detailedBox(2.6, 1.4, 1.9, seed + 1088, 4, 4, 3, 0.02), paper, [-6.2, 0.74, -3.6], 1, [0, 0.22, 0], false);
+    this.mesh(group, this.archFrameGeometry(1.8, 2.0, 0.16, 0.18, seed + 1092), dark, [-6.0, 0.92, -2.48], 1, [0, 0.22, 0], false);
+    this.mesh(group, this.detailedBox(2.3, 1.2, 1.8, seed + 1096, 4, 4, 3, 0.02), teal, [6.4, 0.64, 3.0], 1, [0, -0.18, 0], false);
+    this.mesh(group, this.archFrameGeometry(1.7, 1.8, 0.16, 0.16, seed + 1102), dark, [6.3, 0.82, 4.0], 1, [0, -0.18, 0], false);
+    this.addCrateStack(group, new THREE.Vector3(5.2, 0.04, -2.1), [0.82, 0.3, 0.62], 3, paper, dark, seed + 1108, 0.18);
+    this.addCrateStack(group, new THREE.Vector3(-5.4, 0.04, 2.6), [0.76, 0.28, 0.58], 2, teal, dark, seed + 1116, -0.16);
+    this.mesh(group, this.detailedBox(2.2, 0.18, 0.72, seed + 1122, 3, 2, 2, 0.01), paper, [4.8, 0.26, -3.1], 1, [0, 0.18, 0], false);
+    this.mesh(group, this.detailedBox(1.9, 0.16, 0.66, seed + 1128, 3, 2, 2, 0.01), paper, [-4.7, 0.24, 3.6], 1, [0, -0.12, 0], false);
     this.addButtressRow(
       group,
       new THREE.Vector3(0, 1.3, -1.96),
@@ -2226,8 +2256,11 @@ export class WorldLandmarks {
       seed + 1168
     );
     this.addDishRig(group, new THREE.Vector3(-4.8, 0.06, -3.9), 0.78, 2.4, dark, teal, seed + 1184, 0.48);
+    this.addRailing(group, new THREE.Vector3(-1.2, 3.02, -0.78), new THREE.Vector3(2.5, 3.42, 0.84), 0.58, dark, seed + 1190, false);
+    this.addRailing(group, new THREE.Vector3(-2.7, 0.34, 1.76), new THREE.Vector3(1.4, 4.0, 0.92), 0.42, dark, seed + 1196, false);
     this.mesh(group, this.detailedBox(0.62, 5.8, 0.62, seed + 1198, 3, 10, 3, 0.02), dark, [5.8, 2.9, 3.6], 1, [0, 0.08, 0], false);
     this.mesh(group, this.detailedBox(1.4, 0.16, 1.4, seed + 1206, 3, 2, 3, 0.01), paper, [5.8, 5.94, 3.6], 1, [0, 0.08, 0], false);
+    this.addAntennaCluster(group, new THREE.Vector3(5.8, 6.08, 3.6), 0.34, dark, teal, seed + 1214);
     this.addWindowGrid(group, new THREE.Vector3(5.8, 1.0, 4.36), 2, 3, 0.64, 0.92, [0.2, 0.32, 0.1], dark);
 
     return group;
