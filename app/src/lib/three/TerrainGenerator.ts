@@ -67,6 +67,9 @@ const TerrainFragmentShader = `
     // Dune crest warmth (Sable's peachy highlights)
     float crest = smoothstep(1.7, 7.0, vHeight);
     sandColor += uAccentColor * 0.11 * crest;
+    float slope = 1.0 - abs(normal.y);
+    sandColor = mix(sandColor, sandColor * 0.68, smoothstep(0.28, 0.86, slope) * 0.22);
+    sandColor = mix(sandColor, sandColor * 1.08 + uSkyColor * 0.05, smoothstep(-2.4, 1.2, vHeight) * 0.08);
 
     // Long graphic hatch lines and salt-flat contour marks.
     float hatchCoord = vWorldPos.x * 0.11 + vWorldPos.z * 0.045 + vHeight * 0.16;
@@ -74,12 +77,16 @@ const TerrainFragmentShader = `
     float contourCoord = vHeight * 0.42 + sin(vWorldPos.z * 0.035) * 0.12;
     float contour = 1.0 - smoothstep(0.01, 0.04, abs(fract(contourCoord) - 0.5));
     float saltCracks = 1.0 - smoothstep(0.006, 0.026, abs(fract(vWorldPos.x * 0.19 + sin(vWorldPos.z * 0.06) * 0.3) - 0.5));
-    float graphicLines = clamp(hatch * 0.42 + contour * 0.32 + saltCracks * saltMask * 0.36, 0.0, 1.0);
+    float terraceCoord = vWorldPos.x * 0.07 - vWorldPos.z * 0.03 + slope * 0.8;
+    float terraces = 1.0 - smoothstep(0.018, 0.062, abs(fract(terraceCoord) - 0.5));
+    float graphicLines = clamp(hatch * 0.42 + contour * 0.32 + saltCracks * saltMask * 0.36 + terraces * slope * 0.18, 0.0, 1.0);
+    float paperNoise = fract(sin(dot(floor(vWorldPos.xz * 2.8 + vHeight), vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
     
     // Apply cel shading
     sandColor *= lit;
     sandColor += vec3(spec);
     sandColor = mix(sandColor, uInkColor, graphicLines * mix(0.08, 0.14, saltMask));
+    sandColor += paperNoise * 0.035;
     
     // Atmospheric perspective: distant terrain fades to sky color
     float fogAmount = smoothstep(52.0, 310.0, vDist);
@@ -179,6 +186,25 @@ export class TerrainGenerator {
     return basin + Math.pow(cracks, 16) * 1.8 - 1.1;
   }
 
+  private getOasisValley(x: number, z: number): number {
+    const radial = Math.sqrt((x * 0.72) * (x * 0.72) + (z * 0.12) * (z * 0.12));
+    const basin = -Math.pow(Math.max(0, 1 - radial / 24), 2.1) * 7.4;
+    const rim = Math.pow(Math.max(0, 1 - Math.abs(radial - 22) / 14), 1.8) * 3.4;
+    const terraces = Math.floor((this.fbm(x * 0.05 + 240, z * 0.04 - 120, 4) * 2.8 + 3.0)) / 2.8;
+    const meander = Math.sin(z * 0.05 + this.fbm(x * 0.02, z * 0.02, 3) * 3.5) * 0.9;
+    const palmshelf = Math.pow(Math.max(0, 1 - Math.abs(x + meander * 2.2) / 10.5), 2.4) * 1.2;
+    return terraces + basin + rim + palmshelf;
+  }
+
+  private getCanyonPass(x: number, z: number): number {
+    const trench = -Math.pow(Math.max(0, 1 - Math.abs(x) / 11.5), 2.2) * 6.4;
+    const walls = Math.pow(Math.max(0, (Math.abs(x) - 8.5) / 18.5), 1.7) * 11.8;
+    const switchback = Math.sin(z * 0.032 + this.fbm(x * 0.018, z * 0.02, 3) * 2.8) * 1.4;
+    const shelves = Math.floor((this.getBadlands(x, z) * 0.5 + walls) * 1.75) / 1.75;
+    const cut = Math.pow(Math.max(0, 1 - Math.abs(x + switchback) / 16.5), 1.4) * 1.6;
+    return shelves + trench + cut;
+  }
+
   private getRuinsPlateau(x: number, z: number): number {
     const mesa = this.getBadlands(x, z) * 0.48;
     const platform =
@@ -203,6 +229,8 @@ export class TerrainGenerator {
     const badlands = this.getBadlands(x, z);
     const salt = this.getSaltFlat(x, z);
     const ruins = this.getRuinsPlateau(x, z);
+    const oasis = this.getOasisValley(x, z);
+    const canyon = this.getCanyonPass(x, z);
     const highlands = this.getHighlands(x, z);
 
     let h = dunes;
@@ -210,11 +238,15 @@ export class TerrainGenerator {
     const toBadlands = THREE.MathUtils.smoothstep(progress, 0.12, 0.28);
     const toSalt = THREE.MathUtils.smoothstep(progress, 0.34, 0.48);
     const toRuins = THREE.MathUtils.smoothstep(progress, 0.52, 0.68);
+    const toOasis = THREE.MathUtils.smoothstep(progress, 0.6, 0.76);
+    const toCanyon = THREE.MathUtils.smoothstep(progress, 0.7, 0.86);
     const toHighlands = THREE.MathUtils.smoothstep(progress, 0.76, 0.94);
 
     h = THREE.MathUtils.lerp(h, badlands, toBadlands);
     h = THREE.MathUtils.lerp(h, salt, toSalt);
     h = THREE.MathUtils.lerp(h, ruins, toRuins);
+    h = THREE.MathUtils.lerp(h, oasis, toOasis * (1 - THREE.MathUtils.smoothstep(progress, 0.78, 0.9)));
+    h = THREE.MathUtils.lerp(h, canyon, toCanyon);
     h = THREE.MathUtils.lerp(h, highlands, toHighlands);
 
     // Extra mesh detail so the terrain reads less like a coarse heightfield.
@@ -228,6 +260,9 @@ export class TerrainGenerator {
       h += outcropStrength * outcropStrength * THREE.MathUtils.lerp(2.5, 8.0, progress);
     }
 
+    const striatedEdge = Math.pow(Math.max(0, 1 - Math.abs(x) / 54), 2.0) * this.fbm(x * 0.08 + 620, z * 0.08 - 310, 3);
+    h += striatedEdge * THREE.MathUtils.lerp(0.22, 1.2, THREE.MathUtils.smoothstep(progress, 0.18, 0.84));
+
     const pathWidth = THREE.MathUtils.lerp(6, 10, Math.sin(progress * Math.PI));
     const distFromPath = Math.abs(x) * 0.35;
     if (distFromPath < pathWidth) {
@@ -239,8 +274,8 @@ export class TerrainGenerator {
   }
 
   private generateTerrain() {
-    const size = 460;
-    const segments = 340;
+    const size = 520;
+    const segments = 380;
     this.geometry = new THREE.PlaneGeometry(size, size, segments, segments);
     this.geometry.rotateX(-Math.PI / 2);
 
@@ -269,8 +304,8 @@ export class TerrainGenerator {
   update(scrollOffset: number, dt: number, progress: number) {
     const shouldResample =
       !Number.isFinite(this.lastSampleOffset) ||
-      Math.abs(scrollOffset - this.lastSampleOffset) > 0.22 ||
-      Math.abs(progress - this.lastProgress) > 0.0025;
+      Math.abs(scrollOffset - this.lastSampleOffset) > 0.18 ||
+      Math.abs(progress - this.lastProgress) > 0.0018;
 
     if (shouldResample) {
       this.resampleTerrain(scrollOffset, progress);

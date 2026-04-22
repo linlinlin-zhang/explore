@@ -123,12 +123,14 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
 
   const positioned = useMemo(() => {
     const maxItems = viewport.width < 760 ? 4 : 5;
-    const margin = viewport.width < 760 ? 10 : 16;
+    const margin = viewport.width < 760 ? 10 : 18;
     const sideCounts: Record<'left' | 'right', number> = { left: 0, right: 0 };
+    const quadrantCounts = new Map<string, number>();
     const placed: Array<{ x: number; y: number; width: number; height: number }> = [];
+    const columnTargets = viewport.width < 760 ? [0.18, 0.82] : [0.16, 0.34, 0.66, 0.84];
 
     const overlapPenalty = (x: number, y: number, width: number, height: number) => placed.reduce((sum, box) => {
-      const gap = 14;
+      const gap = 18;
       const overlapX = Math.max(0, Math.min(x + width + gap, box.x + box.width + gap) - Math.max(x - gap, box.x - gap));
       const overlapY = Math.max(0, Math.min(y + height + gap, box.y + box.height + gap) - Math.max(y - gap, box.y - gap));
       if (overlapX === 0 || overlapY === 0) return sum;
@@ -162,16 +164,24 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
           const attachY = y + Math.min(panelHeight - 22, Math.max(24, item.y - y));
           const lineLength = Math.hypot(attachX - item.x, attachY - item.y);
           const clipPenalty = (Math.abs(x - rawX) + Math.abs(y - rawY)) * 0.012;
-          const linePenalty = Math.abs(lineLength - (viewport.width < 760 ? 94 : 126)) * 0.0032;
+          const linePenalty = Math.abs(lineLength - (viewport.width < 760 ? 88 : 118)) * 0.0026;
           const balancePenalty = sideCounts[side] * 1.18;
           const edgeDistance = Math.min(x - margin, viewport.width - panelWidth - margin - x);
-          const edgePenalty = edgeDistance < 18 ? (18 - edgeDistance) * 0.018 : 0;
+          const edgePenalty = edgeDistance < 10 ? (10 - edgeDistance) * 0.03 : 0;
           const panelCenter = (x + panelWidth * 0.5) / viewport.width;
-          const centerPilePenalty = Math.max(0, 0.18 - Math.abs(panelCenter - 0.5)) * 2.6;
-          const anchorPenalty = Math.abs((x + panelWidth * 0.5) - item.x) / viewport.width * 0.34;
+          const nearestColumn = columnTargets.reduce((best, column) => (
+            Math.abs(column - panelCenter) < Math.abs(best - panelCenter) ? column : best
+          ), columnTargets[0]);
+          const columnPenalty = Math.abs(panelCenter - nearestColumn) * 1.2;
+          const centerPilePenalty = Math.max(0, 0.1 - Math.abs(panelCenter - 0.5)) * 1.4;
+          const anchorPenalty = Math.abs((x + panelWidth * 0.5) - item.x) / viewport.width * 0.22;
+          const verticalBand = y + panelHeight * 0.5 < viewport.height * 0.5 ? 'top' : 'bottom';
+          const quadrantKey = `${side}-${verticalBand}`;
+          const quadrantPenalty = (quadrantCounts.get(quadrantKey) ?? 0) * 1.34;
 
           return {
             side,
+            quadrantKey,
             panelX: x,
             panelY: y,
             attachX,
@@ -183,7 +193,9 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
               clipPenalty +
               linePenalty +
               balancePenalty +
+              quadrantPenalty +
               edgePenalty +
+              columnPenalty +
               centerPilePenalty +
               anchorPenalty +
               overlapPenalty(x, y, panelWidth, panelHeight),
@@ -210,10 +222,10 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
           makeCandidate(backward, near, 0, 0.22),
           makeCandidate(backward, far, -lift * 0.55, 0.28),
           makeCandidate(backward, far, lift * 0.6, 0.3),
-          makeLaneCandidate(0.2, -lift * 0.36, 0.24),
-          makeLaneCandidate(0.34, lift * 0.22, 0.26),
-          makeLaneCandidate(0.66, -lift * 0.22, 0.26),
-          makeLaneCandidate(0.8, lift * 0.36, 0.24),
+          makeLaneCandidate(0.16, -lift * 0.36, 0.24),
+          makeLaneCandidate(0.32, lift * 0.22, 0.26),
+          makeLaneCandidate(0.68, -lift * 0.22, 0.26),
+          makeLaneCandidate(0.84, lift * 0.36, 0.24),
           makeCandidate(forward, near * 0.72, -lift * 1.12, 0.36),
           makeCandidate(forward, near * 0.72, lift * 1.12, 0.38),
           makeCandidate(backward, near * 0.72, -lift * 1.04, 0.44),
@@ -222,6 +234,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
         const best = candidates.sort((a, b) => a.score - b.score)[0];
         placed.push({ x: best.panelX, y: best.panelY, width: panelWidth, height: panelHeight });
         sideCounts[best.side] += 1;
+        quadrantCounts.set(best.quadrantKey, (quadrantCounts.get(best.quadrantKey) ?? 0) + 1);
 
         return {
           ...item,
@@ -261,7 +274,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 transformOrigin: '0 50%',
                 background: 'rgba(32, 20, 15, 0.72)',
                 boxShadow: '0 0 0 1px rgba(245, 235, 215, 0.18)',
-                transition: 'left 90ms linear, top 90ms linear, width 90ms linear, transform 90ms linear',
+                transition: 'left 55ms linear, top 55ms linear, width 55ms linear, transform 55ms linear',
               }}
             />
             <div
@@ -273,7 +286,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 height: 8,
                 border: '1px solid rgba(32, 20, 15, 0.72)',
                 background: 'rgba(245, 232, 205, 0.72)',
-                transition: 'left 90ms linear, top 90ms linear',
+                transition: 'left 55ms linear, top 55ms linear',
               }}
             />
             <div
@@ -288,7 +301,7 @@ export default function SceneSemanticOverlay({ items }: SceneSemanticOverlayProp
                 fontFamily: "'Quattrocento Sans', sans-serif",
                 textAlign: item.side === 'left' ? 'right' : 'left',
                 opacity: 0.92,
-                transition: 'left 90ms linear, top 90ms linear, opacity 130ms ease',
+                transition: 'left 55ms linear, top 55ms linear, opacity 110ms ease',
               }}
             >
               <div

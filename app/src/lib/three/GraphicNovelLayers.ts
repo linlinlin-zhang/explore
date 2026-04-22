@@ -224,7 +224,7 @@ export class GraphicNovelLayers {
     const leafB = this.material(0x9fd0a3, 0.58, 'plant');
     const bloom = this.material(0xe86648, 0.62, 'accent');
 
-    for (let p = 0; p < 5; p += 1) {
+    for (let p = 0; p < 7; p += 1) {
       const x = side * (9 + p * 2.2 + seededRandom(seed + p) * 2.2);
       const stemHeight = 1.8 + seededRandom(seed + 20 + p) * 2.6;
       this.lineFromPoints(
@@ -256,6 +256,19 @@ export class GraphicNovelLayers {
           [x + side * 0.18, stemHeight + 0.16, 0.1],
           [1.2, 0.55, 1],
           [0, 0, side * 1.1]
+        );
+      }
+
+      const undergrowthCount = 3 + (p % 3);
+      for (let u = 0; u < undergrowthCount; u += 1) {
+        const spread = (u - (undergrowthCount - 1) * 0.5) * 0.34;
+        this.meshFromPoints(
+          group,
+          this.leafPoints(0.22 + seededRandom(seed + 210 + p * 13 + u) * 0.14, seed + 240 + p * 17 + u),
+          u % 2 === 0 ? leafA : leafB,
+          [x + spread * side, 0.1 + seededRandom(seed + 260 + p + u) * 0.12, 0.02 + u * 0.01],
+          [1.2, 0.52, 1],
+          [0, 0, side * (-0.7 + u * 0.44)]
         );
       }
     }
@@ -455,6 +468,176 @@ export class GraphicNovelLayers {
     this.addItem(group, 0, 0, baseZ, 0.42, 0.16, 1);
   }
 
+  private addHabitatCluster(baseZ: number, seed: number, side: -1 | 1) {
+    const group = new THREE.Group();
+    const wall = this.material(0xe7b3b8, 0.28, 'rock');
+    const terrace = this.material(0xf1c688, 0.2, 'terrain');
+    const dome = this.material(0x8fd7cb, 0.26, 'accent');
+    const ink = this.lineMaterial(0x2a1a12, 0.18, 'ink');
+
+    for (let i = 0; i < 4; i += 1) {
+      const deckW = 3.8 + seededRandom(seed + i) * 2.2;
+      const deckH = 0.42 + seededRandom(seed + 20 + i) * 0.22;
+      const deckX = side * (10.5 + i * 3.9 + seededRandom(seed + 40 + i) * 1.6);
+      const deckY = i * (0.44 + seededRandom(seed + 60 + i) * 0.22);
+      const deck = [
+        new THREE.Vector2(-deckW / 2, 0),
+        new THREE.Vector2(deckW / 2, 0),
+        new THREE.Vector2(deckW / 2 - 0.28, deckH),
+        new THREE.Vector2(-deckW / 2 + 0.36, deckH),
+      ];
+      this.meshFromPoints(group, deck, terrace, [deckX, deckY, -i * 0.14], 1, [0, 0, side * 0.04]);
+
+      const bodyW = 1.4 + seededRandom(seed + 80 + i) * 1.3;
+      const bodyH = 2.8 + seededRandom(seed + 100 + i) * 2.4;
+      const body = [
+        new THREE.Vector2(-bodyW / 2, 0),
+        new THREE.Vector2(-bodyW / 2 + 0.08, bodyH * 0.72),
+        new THREE.Vector2(-bodyW * 0.24, bodyH),
+        new THREE.Vector2(bodyW * 0.22, bodyH * 0.96),
+        new THREE.Vector2(bodyW / 2 - 0.1, bodyH * 0.72),
+        new THREE.Vector2(bodyW / 2, 0),
+      ];
+      const bodyX = deckX + side * (-0.8 + seededRandom(seed + 120 + i) * 1.6);
+      this.meshFromPoints(group, body, wall, [bodyX, deckY + deckH * 0.3, 0.08 - i * 0.12], 1, [0, 0, side * 0.03]);
+      this.lineFromPoints(group, [...body, body[0]].map((p) => new THREE.Vector3(p.x + bodyX, p.y + deckY + deckH * 0.3, 0.1 - i * 0.12)), ink);
+
+      const awning = [
+        new THREE.Vector2(-0.9, 0),
+        new THREE.Vector2(0.9, 0.06),
+        new THREE.Vector2(0.64, 0.34),
+        new THREE.Vector2(-0.74, 0.3),
+      ];
+      this.meshFromPoints(group, awning, i % 2 === 0 ? dome : terrace, [bodyX + side * 0.06, deckY + deckH + bodyH * 0.62, 0.16], 1, [0, 0, side * (0.08 + i * 0.02)]);
+      if (i % 2 === 1) {
+        const cap = [
+          new THREE.Vector2(-bodyW * 0.28, 0),
+          new THREE.Vector2(0, bodyW * 0.4),
+          new THREE.Vector2(bodyW * 0.28, 0),
+        ];
+        this.meshFromPoints(group, cap, dome, [bodyX, deckY + deckH + bodyH, 0.2], [1.1, 0.8, 1], [0, 0, 0]);
+      }
+
+      const portal = [
+        new THREE.Vector2(-0.22, 0),
+        new THREE.Vector2(-0.18, 0.78),
+        new THREE.Vector2(0, 1.02),
+        new THREE.Vector2(0.18, 0.78),
+        new THREE.Vector2(0.22, 0),
+      ];
+      this.meshFromPoints(group, portal, this.material(0xf4ead6, 0.18, 'paper'), [bodyX + side * 0.16, deckY + deckH * 0.3, 0.14], [0.78, 0.92, 1], [0, 0, 0]);
+    }
+
+    for (let i = 0; i < 3; i += 1) {
+      const aX = side * (9.4 + i * 5.2);
+      const bX = side * (13.5 + i * 5.4);
+      const y = 3.4 + i * 0.64;
+      this.lineFromPoints(
+        group,
+        [
+          new THREE.Vector3(aX, y, 0.02),
+          new THREE.Vector3((aX + bX) * 0.5, y - 0.42, 0.02),
+          new THREE.Vector3(bX, y + 0.08, 0.02),
+        ],
+        ink
+      );
+    }
+
+    this.addItem(group, 0, 0.12, baseZ, 0.64 + seededRandom(seed + 300) * 0.05, 0.18, 1);
+  }
+
+  private addCausewayScaffold(baseZ: number, seed: number, side: -1 | 1) {
+    const group = new THREE.Group();
+    const frame = this.material(0x7f6a63, 0.24, 'ink');
+    const deck = this.material(0xf0b98b, 0.2, 'terrain');
+    const accent = this.material(0x91d8cf, 0.24, 'accent');
+    const ink = this.lineMaterial(0x2a1a12, 0.2, 'ink');
+
+    for (let i = 0; i < 4; i += 1) {
+      const x = side * (11 + i * 4.8 + seededRandom(seed + i) * 1.2);
+      const h = 4.4 + seededRandom(seed + 18 + i) * 3.6;
+      const tower = [
+        new THREE.Vector2(-0.16, 0),
+        new THREE.Vector2(0.18, 0),
+        new THREE.Vector2(0.12, h),
+        new THREE.Vector2(-0.12, h),
+      ];
+      this.meshFromPoints(group, tower, frame, [x, 0, -i * 0.06], 1, [0, 0, side * (0.02 + i * 0.01)]);
+      this.lineFromPoints(group, [
+        new THREE.Vector3(x - 0.18, 0, 0.02),
+        new THREE.Vector3(x + 0.18, h * 0.42, 0.02),
+        new THREE.Vector3(x - 0.18, h * 0.9, 0.02),
+      ], ink);
+      this.lineFromPoints(group, [
+        new THREE.Vector3(x + 0.18, 0, 0.02),
+        new THREE.Vector3(x - 0.18, h * 0.42, 0.02),
+        new THREE.Vector3(x + 0.18, h * 0.9, 0.02),
+      ], ink);
+
+      const platform = [
+        new THREE.Vector2(-1.1, 0),
+        new THREE.Vector2(1.1, 0.06),
+        new THREE.Vector2(0.92, 0.3),
+        new THREE.Vector2(-0.96, 0.28),
+      ];
+      this.meshFromPoints(group, platform, deck, [x, h * 0.68, 0.06], 1, [0, 0, side * 0.03]);
+      this.meshFromPoints(group, [
+        new THREE.Vector2(0, 0),
+        new THREE.Vector2(side * 0.9, 0.16),
+        new THREE.Vector2(side * 0.74, -0.18),
+      ], accent, [x, h * 0.86, 0.1], 1, [0, 0, side * 0.08]);
+
+      if (i > 0) {
+        const prevX = side * (11 + (i - 1) * 4.8 + seededRandom(seed + i - 1) * 1.2);
+        this.lineFromPoints(group, [
+          new THREE.Vector3(prevX, h * 0.68 + 0.08, 0.03),
+          new THREE.Vector3((prevX + x) * 0.5, h * 0.68 - 0.26, 0.03),
+          new THREE.Vector3(x, h * 0.68 + 0.04, 0.03),
+        ], ink);
+      }
+    }
+
+    this.addItem(group, 0, 0.16, baseZ, 0.74 + seededRandom(seed + 220) * 0.05, 0.12, 1);
+  }
+
+  private addMonolithGarden(baseZ: number, seed: number, side: -1 | 1) {
+    const group = new THREE.Group();
+    const stoneA = this.material(0xde9aa4, 0.24, 'rock');
+    const stoneB = this.material(0xe8ba8a, 0.2, 'terrain');
+    const plant = this.material(0x89c8a0, 0.28, 'plant');
+    const ink = this.lineMaterial(0x2a1a12, 0.18, 'ink');
+
+    for (let i = 0; i < 6; i += 1) {
+      const h = 4.8 + seededRandom(seed + i) * 6.2;
+      const w = 0.9 + seededRandom(seed + 24 + i) * 1.4;
+      const x = side * (9.6 + i * 3.7 + seededRandom(seed + 48 + i) * 1.6);
+      const body = [
+        new THREE.Vector2(-w / 2, 0),
+        new THREE.Vector2(-w * 0.42, h * 0.76),
+        new THREE.Vector2(-w * 0.1, h),
+        new THREE.Vector2(w * 0.22, h * 0.94),
+        new THREE.Vector2(w * 0.5, h * 0.68),
+        new THREE.Vector2(w / 2, 0),
+      ];
+      this.meshFromPoints(group, body, i % 2 === 0 ? stoneA : stoneB, [x, 0.1, -i * 0.08], 1, [0, 0, side * (0.02 + i * 0.015)]);
+      this.addStrata(group, w * 0.86, h, 7 + i, -i * 0.08 + 0.02, seed + 90 + i * 13, 0.06);
+      this.lineFromPoints(group, [...body, body[0]].map((p) => new THREE.Vector3(p.x + x, p.y + 0.1, -i * 0.08 + 0.03)), ink);
+
+      if (i % 3 === 0) {
+        this.meshFromPoints(
+          group,
+          this.leafPoints(0.34 + seededRandom(seed + 180 + i) * 0.12, seed + 220 + i),
+          plant,
+          [x + side * 0.32, 0.12, 0.12],
+          [1.2, 0.66, 1],
+          [0, 0, side * 0.72]
+        );
+      }
+    }
+
+    this.addItem(group, 0, 0.12, baseZ, 0.6 + seededRandom(seed + 300) * 0.05, 0.14, 1);
+  }
+
   private addItem(group: THREE.Group, baseX: number, baseY: number, baseZ: number, speed: number, sway: number, scale: number) {
     group.position.set(baseX, baseY, -baseZ);
     group.scale.setScalar(scale);
@@ -463,36 +646,48 @@ export class GraphicNovelLayers {
   }
 
   private build() {
-    for (let i = 0; i < 9; i += 1) {
+    for (let i = 0; i < 11; i += 1) {
       this.addMesaCluster(72 + i * 68, 1000 + i * 23, i % 2 === 0 ? -1 : 1, 0.82 + (i % 3) * 0.14);
     }
 
-    for (let i = 0; i < 11; i += 1) {
+    for (let i = 0; i < 12; i += 1) {
       this.addCloudBand(52 + i * 58, 1600 + i * 19, 12 + (i % 4) * 2.5, 18 + (i % 3) * 8, 0.28 + (i % 3) * 0.04);
     }
 
-    for (let i = 0; i < 8; i += 1) {
+    for (let i = 0; i < 9; i += 1) {
       this.addPlantPatch(96 + i * 72, 2200 + i * 31, i % 2 === 0 ? -1 : 1);
     }
 
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 8; i += 1) {
       this.addWireRun(128 + i * 84, 2600 + i * 37, i % 2 === 0 ? 1 : -1);
     }
 
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       this.addRingField(88 + i * 128, 2900 + i * 23, i % 2 === 0 ? 1 : -1);
     }
 
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       this.addTowerSettlement(120 + i * 110, 3400 + i * 29, i % 2 === 0 ? -1 : 1);
     }
 
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       this.addWreckSilhouette(146 + i * 142, 3900 + i * 31, i % 2 === 0 ? -1 : 1);
     }
 
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       this.addSkyDebris(116 + i * 104, 3100 + i * 41);
+    }
+
+    for (let i = 0; i < 6; i += 1) {
+      this.addHabitatCluster(164 + i * 86, 4400 + i * 33, i % 2 === 0 ? 1 : -1);
+    }
+
+    for (let i = 0; i < 5; i += 1) {
+      this.addCausewayScaffold(138 + i * 112, 5000 + i * 27, i % 2 === 0 ? -1 : 1);
+    }
+
+    for (let i = 0; i < 6; i += 1) {
+      this.addMonolithGarden(102 + i * 94, 5600 + i * 25, i % 2 === 0 ? -1 : 1);
     }
   }
 
@@ -508,11 +703,11 @@ export class GraphicNovelLayers {
         item.baseY +
         Math.sin(this.time * 0.2 + index) * item.sway * 0.18;
 
-      const fadeIn = THREE.MathUtils.smoothstep(z, -380, -210);
-      const fadeOut = 1 - THREE.MathUtils.smoothstep(z, 18, 80);
-      const nearCamera = 1 - THREE.MathUtils.smoothstep(z, -130, -25);
-      const centerClear = THREE.MathUtils.smoothstep(Math.abs(item.group.position.x), 5.5, 10.5);
-      const travelLanePreserve = THREE.MathUtils.lerp(1, centerClear, nearCamera * 0.82);
+      const fadeIn = THREE.MathUtils.smoothstep(z, -420, -225);
+      const fadeOut = 1 - THREE.MathUtils.smoothstep(z, 26, 92);
+      const nearCamera = 1 - THREE.MathUtils.smoothstep(z, -118, -18);
+      const centerClear = THREE.MathUtils.smoothstep(Math.abs(item.group.position.x), 4.8, 9.3);
+      const travelLanePreserve = THREE.MathUtils.lerp(1, centerClear, nearCamera * 0.66);
       const fade = THREE.MathUtils.clamp(fadeIn * fadeOut * travelLanePreserve, 0, 1);
       item.group.visible = fade > 0.015;
       item.group.traverse((child) => {

@@ -63,7 +63,7 @@ const RockFragmentShader = `
 `;
 
 interface RockDef {
-  type: 'arch' | 'mesas' | 'pillar' | 'ruins' | 'spire' | 'balanced' | 'debris';
+  type: 'arch' | 'mesas' | 'pillar' | 'ruins' | 'spire' | 'balanced' | 'debris' | 'slab';
   x: number;
   z: number;
   seed: number;
@@ -302,6 +302,43 @@ export class ProceduralRocks {
     return this.mergeGroup(group);
   }
 
+  private createSlabGeo(): THREE.BufferGeometry {
+    const group = new THREE.Group();
+    for (let i = 0; i < 4; i += 1) {
+      const width = 2.8 + seededRandom(710 + i) * 2.8;
+      const depth = 1.1 + seededRandom(730 + i) * 1.6;
+      const thickness = 0.22 + seededRandom(750 + i) * 0.28;
+      const geo = new THREE.BoxGeometry(width, thickness, depth, 5, 2, 3);
+      this.weatherGeometry(geo, 770 + i * 13, 0.06, 0.02);
+      const slab = new THREE.Mesh(geo);
+      slab.position.set(
+        (seededRandom(790 + i) - 0.5) * 1.8,
+        i * 0.42 + thickness * 0.5,
+        (seededRandom(810 + i) - 0.5) * 1.2
+      );
+      slab.rotation.set(
+        (seededRandom(830 + i) - 0.5) * 0.12,
+        seededRandom(850 + i) * Math.PI,
+        (seededRandom(870 + i) - 0.5) * 0.08
+      );
+      group.add(slab);
+    }
+
+    for (let i = 0; i < 3; i += 1) {
+      const support = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.3 + i * 0.34, 0.46, 2, 4, 2));
+      this.weatherGeometry(support.geometry as THREE.BufferGeometry, 890 + i * 17, 0.06, 0.02);
+      support.position.set(
+        -1.3 + i * 1.2,
+        0.62 + i * 0.16,
+        (seededRandom(910 + i) - 0.5) * 0.9
+      );
+      support.rotation.z = (seededRandom(930 + i) - 0.5) * 0.1;
+      group.add(support);
+    }
+
+    return this.mergeGroup(group);
+  }
+
   private mergeGroup(group: THREE.Group): THREE.BufferGeometry {
     const geometries: THREE.BufferGeometry[] = [];
     group.traverse((child) => {
@@ -348,13 +385,14 @@ export class ProceduralRocks {
 
   private generateRocks() {
     const rockDefs: { type: RockDef['type']; count: number; minZ: number; maxZ: number; minX: number; maxX: number }[] = [
-      { type: 'arch', count: 10, minZ: -35, maxZ: 385, minX: -62, maxX: 62 },
-      { type: 'mesas', count: 18, minZ: -45, maxZ: 420, minX: -74, maxX: 74 },
-      { type: 'pillar', count: 24, minZ: -30, maxZ: 360, minX: -52, maxX: 52 },
-      { type: 'spire', count: 16, minZ: 10, maxZ: 415, minX: -66, maxX: 66 },
-      { type: 'balanced', count: 10, minZ: 0, maxZ: 330, minX: -45, maxX: 45 },
-      { type: 'ruins', count: 22, minZ: -10, maxZ: 390, minX: -58, maxX: 58 },
-      { type: 'debris', count: 42, minZ: -45, maxZ: 430, minX: -72, maxX: 72 },
+      { type: 'arch', count: 12, minZ: -35, maxZ: 405, minX: -66, maxX: 66 },
+      { type: 'mesas', count: 22, minZ: -45, maxZ: 450, minX: -76, maxX: 76 },
+      { type: 'pillar', count: 28, minZ: -30, maxZ: 380, minX: -56, maxX: 56 },
+      { type: 'spire', count: 18, minZ: 10, maxZ: 430, minX: -68, maxX: 68 },
+      { type: 'balanced', count: 12, minZ: 0, maxZ: 346, minX: -48, maxX: 48 },
+      { type: 'slab', count: 18, minZ: -20, maxZ: 420, minX: -62, maxX: 62 },
+      { type: 'ruins', count: 28, minZ: -10, maxZ: 404, minX: -62, maxX: 62 },
+      { type: 'debris', count: 56, minZ: -45, maxZ: 450, minX: -78, maxX: 78 },
     ];
 
     const materialCache = new Map<string, THREE.ShaderMaterial>();
@@ -369,6 +407,7 @@ export class ProceduralRocks {
         case 'pillar': baseGeo = this.createPillarGeo(); break;
         case 'spire': baseGeo = this.createSpireGeo(); break;
         case 'balanced': baseGeo = this.createBalancedGeo(); break;
+        case 'slab': baseGeo = this.createSlabGeo(); break;
         case 'ruins': baseGeo = this.createDebrisGeo(); break;
         case 'debris': baseGeo = this.createDebrisGeo(); break;
       }
@@ -394,7 +433,7 @@ export class ProceduralRocks {
         const z = minZ + seededRandom(seed + 1) * (maxZ - minZ);
         const corridorHalfWidth =
           z > 65 && z < 330
-            ? type === 'arch' || type === 'mesas' || type === 'pillar' || type === 'balanced'
+            ? type === 'arch' || type === 'mesas' || type === 'pillar' || type === 'balanced' || type === 'slab'
               ? 23
               : 17
             : type === 'debris'
@@ -438,6 +477,8 @@ export class ProceduralRocks {
           mesh.scale.set(scaleBase * 0.7, scaleBase * (0.8 + seededRandom(seed + 3)), scaleBase * 0.7);
         } else if (type === 'spire') {
           mesh.scale.set(scaleBase, scaleBase * (1.2 + seededRandom(seed + 3)), scaleBase);
+        } else if (type === 'slab') {
+          mesh.scale.set(scaleBase * 0.92, scaleBase * 0.74, scaleBase * 0.92);
         } else {
           mesh.scale.setScalar(scaleBase);
         }
@@ -465,10 +506,10 @@ export class ProceduralRocks {
       const z = -inst.z + this.scrollOffset * 0.98 - 10;
       const wobble = Math.max(0.14, Math.min(1.15, (Math.abs(inst.x) - 16) * 0.05));
       rock.position.z = z;
-      rock.position.x = inst.x + Math.sin(progress * Math.PI * 3 + inst.seed) * wobble;
+      rock.position.x = inst.x + Math.sin(progress * Math.PI * 3 + inst.seed) * wobble * (inst.type === 'slab' ? 0.4 : 1);
       rock.position.y = -0.85 + Math.sin(progress * Math.PI * 2 + inst.seed * 0.1) * 0.08;
-      rock.rotation.y += dt * 0.015 * (i % 2 === 0 ? 1 : -1);
-      rock.visible = z > -285 && z < 42;
+      rock.rotation.y += dt * 0.015 * (i % 2 === 0 ? 1 : -1) * (inst.type === 'slab' ? 0.45 : 1);
+      rock.visible = z > -320 && z < 56;
     });
   }
 

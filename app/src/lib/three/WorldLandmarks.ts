@@ -2358,6 +2358,7 @@ export class WorldLandmarks {
         break;
     }
 
+    this.addLandmarkScatter(group, def);
     group.position.set(def.x, def.y, -def.z);
     group.scale.setScalar(def.scale);
     group.rotation.y = def.rotation;
@@ -2372,10 +2373,80 @@ export class WorldLandmarks {
     this.groups.push(group);
   }
 
+  private addLandmarkScatter(group: THREE.Group, def: LandmarkDef) {
+    const dark = this.createMaterial(0x2f211a);
+    const stone = this.createMaterial(0xd7a595);
+    const sand = this.createMaterial(0xe2c18c);
+    const blush = this.createMaterial(0xc97f8f);
+    const teal = this.createMaterial(0x7fd7cb);
+
+    switch (def.kind) {
+      case 'wall':
+        this.addCrateStack(group, new THREE.Vector3(-8.6, 0.04, -6.2), [0.7, 0.28, 0.54], 2, stone, dark, def.seed + 1402, 0.14);
+        this.addSkylinePins(group, new THREE.Vector3(6.8, 0.12, -10.6), 5, 1.4, dark, teal, def.seed + 1416, 2.2, 4.4);
+        this.addCable(group, new THREE.Vector3(-7.2, 4.6, -8.2), new THREE.Vector3(5.8, 4.2, -10.8), 1.4, 0.03, dark);
+        break;
+      case 'cliffCity':
+        this.addBridge(group, new THREE.Vector3(-10.2, 0.26, -3.4), new THREE.Vector3(-6.6, 0.44, -1.8), 0.54, 0.08, dark, stone);
+        this.addRailing(group, new THREE.Vector3(-10.1, 0.32, -3.3), new THREE.Vector3(-6.7, 0.5, -1.7), 0.46, dark, def.seed + 1438, false);
+        this.addSkylinePins(group, new THREE.Vector3(-8.2, 0.16, 4.6), 4, 1.5, dark, teal, def.seed + 1452, 2.6, 4.8);
+        this.addCrateStack(group, new THREE.Vector3(-9.4, 0.04, 2.6), [0.68, 0.28, 0.54], 2, blush, dark, def.seed + 1468, -0.12);
+        break;
+      case 'oasis':
+        group.add(this.buildPalm(def.seed + 1480, -9.4, -4.2, 0.78, dark, teal));
+        group.add(this.buildPalm(def.seed + 1494, 10.2, 4.8, 0.72, dark, teal));
+        this.addCrateStack(group, new THREE.Vector3(0.4, 0.04, 6.5), [0.6, 0.24, 0.46], 2, sand, dark, def.seed + 1502, 0.1);
+        this.addCable(group, new THREE.Vector3(-4.8, 2.5, 5.1), new THREE.Vector3(5.8, 2.8, 6.1), 1.1, 0.022, dark);
+        break;
+      case 'rocketSite':
+        this.addPipeRack(group, new THREE.Vector3(-7.4, 0, -3.8), new THREE.Vector3(-1.2, 0, -0.8), 1.8, dark, teal, def.seed + 1526);
+        this.addCrateStack(group, new THREE.Vector3(7.6, 0.04, 2.4), [0.72, 0.28, 0.58], 2, sand, dark, def.seed + 1540, 0.16);
+        this.addSkylinePins(group, new THREE.Vector3(-6.2, 0.12, 5.4), 4, 1.1, dark, blush, def.seed + 1558, 1.8, 3.6);
+        break;
+      case 'craterField':
+        this.addSkylinePins(group, new THREE.Vector3(-3.6, 0.08, 3.6), 4, 1.6, dark, teal, def.seed + 1576, 1.6, 3.2);
+        this.addDishRig(group, new THREE.Vector3(4.8, 0.06, -3.8), 0.62, 1.8, dark, teal, def.seed + 1590, -0.26);
+        break;
+      case 'archive':
+        this.addBridge(group, new THREE.Vector3(-8.2, 0.26, -5.2), new THREE.Vector3(-4.6, 0.48, -3.8), 0.56, 0.08, dark, stone);
+        this.addRailing(group, new THREE.Vector3(-8.1, 0.32, -5.1), new THREE.Vector3(-4.7, 0.54, -3.7), 0.48, dark, def.seed + 1608, false);
+        this.addSkylinePins(group, new THREE.Vector3(6.8, 0.12, 5.2), 4, 1.3, dark, teal, def.seed + 1624, 1.8, 3.8);
+        this.addCrateStack(group, new THREE.Vector3(6.4, 0.04, 4.6), [0.7, 0.28, 0.54], 2, sand, dark, def.seed + 1638, -0.12);
+        break;
+      case 'corridor':
+        this.addCable(group, new THREE.Vector3(-8.8, 4.8, -10.8), new THREE.Vector3(8.8, 4.6, -10.2), 1.3, 0.026, dark);
+        this.addFloatingSlabs(group, new THREE.Vector3(-5.4, 3.1, 12.2), 4, 1.8, 2.6, stone, def.seed + 1654);
+        break;
+      case 'hangarCamp':
+        this.addBridge(group, new THREE.Vector3(-6.2, 0.24, -5.6), new THREE.Vector3(-2.8, 0.42, -3.4), 0.54, 0.08, dark, blush);
+        this.addCrateStack(group, new THREE.Vector3(8.1, 0.04, 3.8), [0.74, 0.3, 0.58], 3, stone, dark, def.seed + 1670, 0.18);
+        this.addCable(group, new THREE.Vector3(6.8, 3.7, 0.8), new THREE.Vector3(10.6, 3.2, 4.4), 0.8, 0.022, dark);
+        break;
+      case 'ship':
+        this.addAntennaCluster(group, new THREE.Vector3(5.2, 1.8, -2.4), 0.46, dark, teal, def.seed + 1688);
+        this.addCable(group, new THREE.Vector3(-4.6, 2.2, -1.4), new THREE.Vector3(4.8, 1.6, -3.6), 0.9, 0.024, dark);
+        this.addCrateStack(group, new THREE.Vector3(5.0, 0.02, -4.1), [0.64, 0.24, 0.5], 2, blush, dark, def.seed + 1704, 0.22);
+        break;
+      case 'needle':
+        this.addSkylinePins(group, new THREE.Vector3(-3.6, 0.08, -3.2), 5, 1.0, dark, stone, def.seed + 1722, 1.2, 3.4);
+        break;
+      case 'statueGarden':
+        this.addPergola(group, new THREE.Vector3(-6.2, 0.08, -5.8), 2.8, 2.0, 1.8, dark, sand, def.seed + 1738, 0.12);
+        this.addSkylinePins(group, new THREE.Vector3(5.6, 0.1, 5.2), 3, 1.6, dark, teal, def.seed + 1752, 1.8, 3.6);
+        break;
+      case 'beacon':
+        this.addFloatingSlabs(group, new THREE.Vector3(-4.2, 4.6, 2.8), 4, 2.0, 2.4, blush, def.seed + 1768);
+        this.addCrateStack(group, new THREE.Vector3(3.6, 0.04, -3.4), [0.62, 0.24, 0.48], 2, sand, dark, def.seed + 1776, 0.14);
+        break;
+      default:
+        break;
+    }
+  }
+
   private generateLandmarks() {
     this.defs = [
       { kind: 'saltGate', x: 11, y: 0.2, z: 24, scale: 1.62, rotation: -0.22, seed: 10, poi: { id: 'threshold-gate', title: 'Threshold Gate', category: 'portal', description: 'The opening glyph gate that introduces the journey and the idea of entering a new context space.', tags: ['portal', 'entry', 'symbol'] } },
-      { kind: 'wall', x: -10.4, y: 0.2, z: 62, scale: 1.35, rotation: 0.08, seed: 20, poi: { id: 'archive-wall', title: 'Memory Wall', category: 'architecture', description: 'A monumental wall city that can later reveal linked references, research threads, and urban context.', tags: ['wall', 'city', 'research'] } },
+      { kind: 'wall', x: -12.2, y: 0.2, z: 62, scale: 1.35, rotation: 0.08, seed: 20, poi: { id: 'archive-wall', title: 'Memory Wall', category: 'architecture', description: 'A monumental wall city that can later reveal linked references, research threads, and urban context.', tags: ['wall', 'city', 'research'] } },
       { kind: 'rib', x: -14, y: 0.55, z: 102, scale: 1.9, rotation: 0.46, seed: 30, poi: { id: 'bone-dunes', title: 'Bone Dunes', category: 'creature', description: 'A skeletal landmark suggesting ecology, history, and extinct life forms for image-to-story expansions.', tags: ['skeleton', 'creature', 'history'] } },
       { kind: 'cliffCity', x: 8.2, y: 0.2, z: 142, scale: 1.52, rotation: -0.28, seed: 40, poi: { id: 'cliff-city', title: 'Cliff City', category: 'architecture', description: 'Layered canyon architecture that can anchor related images, maps, music, and contextual story threads.', tags: ['city', 'canyon', 'architecture'] } },
       { kind: 'ship', x: -13.5, y: 0.9, z: 184, scale: 1.34, rotation: -0.12, seed: 50, poi: { id: 'wreck-site', title: 'Wreck Site', category: 'vehicle', description: 'A crashed vessel for surfacing speculative history, engineering diagrams, and sound cues.', tags: ['spaceship', 'wreck', 'vehicle'] } },

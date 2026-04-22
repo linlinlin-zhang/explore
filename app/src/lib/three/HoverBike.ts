@@ -228,9 +228,9 @@ export class HoverBike {
   private makeRibbonGeometry() {
     const geometry = new THREE.BufferGeometry();
     const widthNear = 0.16;
-    const widthFar = 0.96;
-    const length = 26;
-    const segments = 72;
+    const widthFar = 0.82;
+    const length = 30;
+    const segments = 84;
     const positions = new Float32Array((segments + 1) * 2 * 3);
     const uvs = new Float32Array((segments + 1) * 2 * 2);
     const indices: number[] = [];
@@ -307,6 +307,18 @@ export class HoverBike {
     this.addMesh(new THREE.TorusGeometry(0.43, 0.022, 8, 42), body, [0, 0.05, 1.28], [1, 1, 0.72], [0, 0, 0], 0.78);
     this.addMesh(new THREE.TorusGeometry(0.31, 0.018, 8, 36), teal, [0, 0.05, 1.47], [1, 1, 0.72], [0, 0, 0], 0.7);
     this.addMesh(new THREE.CylinderGeometry(0.2, 0.26, 0.12, 18, 2), dark, [0, 0.05, 1.72], [1, 1, 1], [Math.PI / 2, 0, 0], 0.88);
+    this.addMesh(new THREE.CylinderGeometry(0.06, 0.08, 0.38, 12, 2), teal, [0, 0.05, 1.86], [1, 1, 1], [Math.PI / 2, 0, 0], 0.76);
+    for (let i = 0; i < 4; i += 1) {
+      const angle = (i / 4) * Math.PI * 2 + Math.PI * 0.25;
+      this.addMesh(
+        new THREE.CylinderGeometry(0.018, 0.018, 0.32, 6),
+        dark,
+        [Math.cos(angle) * 0.34, Math.sin(angle) * 0.24 + 0.05, 1.44],
+        1,
+        [0.3 + Math.sin(angle) * 0.22, 0, Math.cos(angle)],
+        0.64
+      );
+    }
 
     this.addMesh(
       new THREE.ConeGeometry(0.48, 0.78, 30, 4),
@@ -334,6 +346,22 @@ export class HoverBike {
       [Math.PI / 2, 0, 0],
       0.6
     );
+    this.addMesh(
+      new THREE.BoxGeometry(0.42, 0.1, 0.82, 3, 1, 4),
+      body,
+      [0, 0.14, -0.86],
+      [1, 1, 1],
+      [0.12, 0, 0],
+      0.66
+    );
+    this.addMesh(
+      new THREE.BoxGeometry(0.18, 0.18, 0.54, 2, 2, 3),
+      dark,
+      [0, 0.28, -0.48],
+      [1, 1, 1],
+      [0.18, 0, 0],
+      0.72
+    );
 
     this.addMesh(
       new THREE.CylinderGeometry(0.08, 0.11, 0.95, 10, 3),
@@ -350,6 +378,30 @@ export class HoverBike {
       1,
       [0.9, 0, -0.28],
       0.74
+    );
+    this.addMesh(
+      new THREE.BoxGeometry(0.62, 0.05, 0.18, 3, 1, 1),
+      dark,
+      [0, 0.3, -1.52],
+      1,
+      [0.1, 0, 0],
+      0.7
+    );
+    this.addMesh(
+      new THREE.CylinderGeometry(0.018, 0.018, 1.02, 6),
+      dark,
+      [-0.52, -0.08, -0.76],
+      1,
+      [1.2, 0.12, 0.36],
+      0.6
+    );
+    this.addMesh(
+      new THREE.CylinderGeometry(0.018, 0.018, 1.02, 6),
+      dark,
+      [0.52, -0.08, -0.76],
+      1,
+      [1.2, -0.12, -0.36],
+      0.6
     );
 
     // Beige cloth-like side wings.
@@ -381,6 +433,22 @@ export class HoverBike {
       [0.04, 0, 0],
       0.76
     );
+    this.addMesh(
+      new THREE.BoxGeometry(0.32, 0.08, 0.38, 2, 1, 2),
+      teal,
+      [0, 0.52, 0.92],
+      [1, 1, 1],
+      [0.12, 0, 0],
+      0.72
+    );
+    this.addMesh(
+      new THREE.BoxGeometry(0.82, 0.04, 0.12, 3, 1, 1),
+      body,
+      [0, 0.58, 0.52],
+      [1, 1, 1],
+      [0.08, 0, 0],
+      0.72
+    );
 
     this.addMesh(
       new THREE.CylinderGeometry(0.04, 0.04, 0.78, 8),
@@ -405,6 +473,22 @@ export class HoverBike {
       1,
       [0, 0, 0],
       0.88
+    );
+    this.addMesh(
+      new THREE.BoxGeometry(0.42, 0.06, 0.2, 2, 1, 1),
+      dark,
+      [0, 1.02, -0.26],
+      [1, 1, 1],
+      [0.04, 0, 0],
+      0.88
+    );
+    this.addMesh(
+      new THREE.BoxGeometry(0.22, 0.08, 0.12, 2, 1, 1),
+      teal,
+      [0, 1.05, -0.42],
+      [1, 1, 1],
+      [0.08, 0, 0],
+      0.82
     );
     this.addMesh(
       new THREE.TubeGeometry(
@@ -456,6 +540,8 @@ export class HoverBike {
     this.addMesh(new THREE.BoxGeometry(0.68, 0.12, 0.42, 3, 1, 2), dark, [0, 0.62, 0.12], [1, 0.8, 0.72], [0.12, 0, 0], 0.78);
     this.addMesh(new THREE.BoxGeometry(0.26, 0.42, 0.24, 3, 3, 2), teal, [0, 0.78, 0.36], [1, 1, 0.8], [0.18, 0, 0], 0.72);
     this.addMesh(new THREE.BoxGeometry(0.44, 0.36, 0.22, 3, 3, 2), dark, [0, 0.82, 0.52], [1, 0.9, 0.8], [0.16, 0, 0], 0.68);
+    this.addMesh(new THREE.CylinderGeometry(0.12, 0.12, 0.34, 10, 2), cloth, [0, 0.92, 0.28], [1.05, 0.8, 1], [Math.PI / 2 + 0.12, 0, 0], 0.68);
+    this.addMesh(new THREE.BoxGeometry(0.52, 0.05, 0.14, 2, 1, 1), dark, [0, 0.74, 0.72], [1, 1, 1], [0.16, 0, 0], 0.7);
     this.addMesh(new THREE.BoxGeometry(0.34, 0.09, 0.22, 2, 1, 1), slate, [-0.32, 0.98, 0.1], [1, 1, 0.8], [0.1, 0, -0.22], 0.72);
     this.addMesh(new THREE.BoxGeometry(0.34, 0.09, 0.22, 2, 1, 1), slate, [0.32, 0.98, 0.1], [1, 1, 0.8], [0.1, 0, 0.22], 0.72);
     this.addMesh(new THREE.CylinderGeometry(0.04, 0.055, 0.62, 8, 3), dark, [-0.42, 0.82, -0.2], 1, [1.2, 0.18, 0.8], 0.82);
@@ -468,6 +554,8 @@ export class HoverBike {
     this.addMesh(new THREE.BoxGeometry(0.12, 0.05, 0.24, 1, 1, 2), slate, [0.26, 0.35, -0.12], [1, 1, 1], [0.18, 0, 0.34], 0.72);
     this.addMesh(new THREE.BoxGeometry(0.15, 0.1, 0.44, 2, 1, 2), dark, [-0.3, 0.16, -0.08], 1, [0.08, 0, -0.2], 0.74);
     this.addMesh(new THREE.BoxGeometry(0.15, 0.1, 0.44, 2, 1, 2), dark, [0.3, 0.16, -0.08], 1, [0.08, 0, 0.2], 0.74);
+    this.addMesh(new THREE.BoxGeometry(0.22, 0.05, 0.18, 2, 1, 1), slate, [-0.18, 0.5, 0.18], [1, 1, 1], [0.2, 0, -0.1], 0.68);
+    this.addMesh(new THREE.BoxGeometry(0.22, 0.05, 0.18, 2, 1, 1), slate, [0.18, 0.5, 0.18], [1, 1, 1], [0.2, 0, 0.1], 0.68);
 
     this.addMesh(
       new THREE.BoxGeometry(0.08, 0.42, 0.14),
@@ -484,6 +572,22 @@ export class HoverBike {
       1,
       [0.22, 0, 0.08],
       0.82
+    );
+    this.addMesh(
+      this.makeWingShape(-1),
+      red,
+      [-0.22, 0.98, 0.58],
+      [0.22, 0.28, 1],
+      [Math.PI / 2.12, 0.08, -0.56],
+      0.58
+    );
+    this.addMesh(
+      this.makeWingShape(1),
+      red,
+      [0.22, 0.98, 0.58],
+      [0.22, 0.28, 1],
+      [Math.PI / 2.12, -0.08, 0.56],
+      0.58
     );
 
     // Cape and the iconic red streak.
@@ -502,6 +606,16 @@ export class HoverBike {
     ribbonEcho.scale.set(0.68, 0.46, 0.9);
     ribbonEcho.rotation.x = -0.12;
     this.group.add(ribbonEcho);
+    const ribbonFilamentLeft = new THREE.Mesh(this.makeRibbonGeometry(), this.ribbonCoreMaterial);
+    ribbonFilamentLeft.position.set(-0.14, 0.58, 1.42);
+    ribbonFilamentLeft.scale.set(0.18, 0.22, 0.84);
+    ribbonFilamentLeft.rotation.set(-0.16, 0.12, -0.1);
+    this.group.add(ribbonFilamentLeft);
+    const ribbonFilamentRight = new THREE.Mesh(this.makeRibbonGeometry(), this.ribbonCoreMaterial);
+    ribbonFilamentRight.position.set(0.14, 0.48, 1.48);
+    ribbonFilamentRight.scale.set(0.16, 0.18, 0.76);
+    ribbonFilamentRight.rotation.set(-0.14, -0.08, 0.06);
+    this.group.add(ribbonFilamentRight);
 
     // Engine glow.
     const glow = new THREE.Mesh(new THREE.CircleGeometry(0.48, 34), this.glowMaterial);

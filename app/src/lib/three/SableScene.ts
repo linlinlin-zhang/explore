@@ -255,22 +255,22 @@ export class SableScene {
       powerPreference: 'high-performance',
     });
     this.renderer.setClearColor(0x7EC8C8, 1);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.25));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.08;
 
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0xE0C8A0, 0.006);
 
     this.camera = new THREE.PerspectiveCamera(
-      58,
+      54,
       canvas.clientWidth / canvas.clientHeight,
       0.1,
       900
     );
-    this.camera.position.set(0, 3.8, 16);
+    this.camera.position.set(0, 3.7, 18.1);
     this.camera.lookAt(0, 1.8, 0);
 
     // Depth render target for outline effect
@@ -313,8 +313,8 @@ export class SableScene {
     this.sunLight = new THREE.DirectionalLight(palette.sun, 1.8);
     this.sunLight.position.set(20, 25, 15);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.mapSize.width = 3072;
+    this.sunLight.shadow.mapSize.height = 3072;
     this.sunLight.shadow.camera.near = 0.5;
     this.sunLight.shadow.camera.far = 120;
     this.sunLight.shadow.camera.left = -50;
@@ -368,7 +368,7 @@ export class SableScene {
 
   private initPostProcessing() {
     this.composer = new EffectComposer(this.renderer);
-    this.composer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.25));
+    this.composer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
 
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
@@ -657,7 +657,7 @@ export class SableScene {
     this.syncJourneyFromScroll();
     this.updateTimeOfDay(dt);
 
-    const worldOffset = this.journeyProgress * 640;
+    const worldOffset = this.journeyProgress * 672;
 
     // Move and resample the world, not just the camera. This keeps the page feeling
     // like one continuous traversal through changing biomes.
@@ -680,25 +680,25 @@ export class SableScene {
     this.smoothedPointer.lerp(this.pointer, Math.min(dt * 3.5, 1));
     const px = (this.smoothedPointer.x - 0.5) * 2;
     const py = (this.smoothedPointer.y - 0.5) * 2;
-    const camTime = elapsed * 0.4;
+    const camTime = elapsed * 0.34;
     const progressWave = Math.sin(this.journeyProgress * Math.PI);
     this.camera.position.y =
-      3.95 +
-      progressWave * 1.55 +
-      Math.sin(camTime) * 0.1 +
-      Math.sin(camTime * 1.7) * 0.04 -
-      py * 0.28;
+      3.86 +
+      progressWave * 1.2 +
+      Math.sin(camTime) * 0.06 +
+      Math.sin(camTime * 1.55) * 0.03 -
+      py * 0.18;
     this.camera.position.x =
-      Math.sin(this.journeyProgress * Math.PI * 3.4) * 1.82 +
-      Math.sin(camTime * 0.6) * 0.22 +
-      px * 0.45;
-    this.camera.position.z = 17.4 - progressWave * 3.1;
-    this.camera.fov = 52.5 + progressWave * 3.4;
+      Math.sin(this.journeyProgress * Math.PI * 2.6) * 0.96 +
+      Math.sin(camTime * 0.56) * 0.12 +
+      px * 0.26;
+    this.camera.position.z = 18.2 - progressWave * 2.45;
+    this.camera.fov = 49.5 + progressWave * 1.85;
     this.camera.updateProjectionMatrix();
     this.camera.lookAt(
-      Math.sin(this.journeyProgress * Math.PI * 2.2) * 0.96 + px * 0.28,
-      1.95 + progressWave * 0.7 - py * 0.18,
-      -9.2 - progressWave * 4.2
+      Math.sin(this.journeyProgress * Math.PI * 1.9) * 0.58 + px * 0.18,
+      1.95 + progressWave * 0.48 - py * 0.12,
+      -10.6 - progressWave * 3.4
     );
     this.updateSemanticOverlay(dt);
 
@@ -715,8 +715,8 @@ export class SableScene {
     this.outlinePass.uniforms.tDepth.value = this.depthRenderTarget.texture;
     this.outlinePass.uniforms.time.value = elapsed;
     this.outlinePass.uniforms.progress.value = this.journeyProgress;
-    this.outlinePass.uniforms.paperStrength.value = 0.22 + Math.sin(this.journeyProgress * Math.PI) * 0.18;
-    this.outlinePass.uniforms.hatchStrength.value = 0.16 + Math.sin(this.journeyProgress * Math.PI * 1.25) * 0.08;
+    this.outlinePass.uniforms.paperStrength.value = 0.3 + Math.sin(this.journeyProgress * Math.PI) * 0.16;
+    this.outlinePass.uniforms.hatchStrength.value = 0.2 + Math.sin(this.journeyProgress * Math.PI * 1.25) * 0.07;
 
     // Main render
     this.composer.render();
