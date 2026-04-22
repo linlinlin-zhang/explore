@@ -526,6 +526,160 @@ export class WorldLandmarks {
     }
   }
 
+  private addPergola(
+    group: THREE.Group,
+    center: THREE.Vector3,
+    width: number,
+    depth: number,
+    height: number,
+    postMaterial: THREE.Material,
+    roofMaterial: THREE.Material,
+    seed: number,
+    yaw = 0
+  ) {
+    const posts: Array<[number, number]> = [
+      [-width * 0.44, -depth * 0.42],
+      [width * 0.44, -depth * 0.42],
+      [-width * 0.44, depth * 0.42],
+      [width * 0.44, depth * 0.42],
+    ];
+    posts.forEach(([x, z], index) => {
+      this.mesh(
+        group,
+        this.detailedBox(0.16, height, 0.16, seed + index * 13, 2, 8, 2, 0.01),
+        postMaterial,
+        [center.x + x, center.y + height * 0.5, center.z + z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    });
+
+    this.mesh(
+      group,
+      this.detailedBox(width, 0.14, depth, seed + 61, 6, 2, 4, 0.012),
+      roofMaterial,
+      [center.x, center.y + height + 0.02, center.z],
+      1,
+      [0, yaw, 0],
+      false
+    );
+
+    const slatCount = Math.max(4, Math.floor(width / 0.65));
+    for (let i = 0; i < slatCount; i += 1) {
+      const offset = (i - (slatCount - 1) / 2) * (width / slatCount);
+      this.mesh(
+        group,
+        this.detailedBox(0.12, 0.12, depth * 0.92, seed + 100 + i * 7, 2, 2, 4, 0.006),
+        postMaterial,
+        [center.x + Math.cos(yaw) * offset, center.y + height + 0.14, center.z - Math.sin(yaw) * offset],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    }
+  }
+
+  private addDishRig(
+    group: THREE.Group,
+    center: THREE.Vector3,
+    radius: number,
+    mastHeight: number,
+    mastMaterial: THREE.Material,
+    dishMaterial: THREE.Material,
+    seed: number,
+    yaw = 0
+  ) {
+    this.mesh(
+      group,
+      this.detailedCylinder(0.08, 0.11, mastHeight, 7, 6, seed, 0.012),
+      mastMaterial,
+      [center.x, center.y + mastHeight * 0.5, center.z],
+      1,
+      [0, yaw, 0],
+      false
+    );
+    this.mesh(
+      group,
+      new THREE.SphereGeometry(radius, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2.05),
+      dishMaterial,
+      [center.x, center.y + mastHeight + radius * 0.42, center.z],
+      [1, 0.46, 1],
+      [0.12, yaw, 0],
+      true
+    );
+    this.mesh(
+      group,
+      this.detailedCylinder(0.02, 0.03, radius * 0.88, 6, 4, seed + 23, 0.004),
+      mastMaterial,
+      [center.x, center.y + mastHeight + radius * 0.18, center.z + radius * 0.18],
+      1,
+      [0.88, yaw, 0],
+      false
+    );
+    this.mesh(
+      group,
+      new THREE.SphereGeometry(radius * 0.12, 8, 6),
+      mastMaterial,
+      [center.x, center.y + mastHeight + radius * 0.02, center.z + radius * 0.36],
+      1,
+      [0, 0, 0],
+      false
+    );
+  }
+
+  private addPipeRack(
+    group: THREE.Group,
+    start: THREE.Vector3,
+    end: THREE.Vector3,
+    elevation: number,
+    supportMaterial: THREE.Material,
+    pipeMaterial: THREE.Material,
+    seed: number
+  ) {
+    const span = end.clone().sub(start);
+    const length = span.length();
+    const yaw = Math.atan2(span.x, span.z);
+    const center = start.clone().add(end).multiplyScalar(0.5);
+    const supportCount = Math.max(3, Math.floor(length / 2.4));
+    for (let i = 0; i < supportCount; i += 1) {
+      const t = i / Math.max(1, supportCount - 1);
+      const x = THREE.MathUtils.lerp(start.x, end.x, t);
+      const z = THREE.MathUtils.lerp(start.z, end.z, t);
+      this.mesh(
+        group,
+        this.detailedBox(0.12, elevation, 0.12, seed + i * 11, 2, 6, 2, 0.008),
+        supportMaterial,
+        [x, elevation * 0.5, z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+      this.mesh(
+        group,
+        this.detailedBox(0.86, 0.08, 0.12, seed + 80 + i * 11, 2, 2, 2, 0.006),
+        supportMaterial,
+        [x, elevation + 0.08, z],
+        1,
+        [0, yaw, 0],
+        false
+      );
+    }
+
+    for (let lane = 0; lane < 3; lane += 1) {
+      const offset = (lane - 1) * 0.18;
+      this.mesh(
+        group,
+        this.detailedCylinder(0.06, 0.06, length, 8, 8, seed + 140 + lane * 13, 0.006),
+        pipeMaterial,
+        [center.x + Math.cos(yaw) * offset, elevation + 0.18 + lane * 0.12, center.z - Math.sin(yaw) * offset],
+        1,
+        [Math.PI / 2, yaw, 0],
+        false
+      );
+    }
+  }
+
   private getPoiAnchor(kind: LandmarkKind, bounds: THREE.Box3) {
     const center = bounds.getCenter(new THREE.Vector3());
     switch (kind) {
@@ -1124,6 +1278,9 @@ export class WorldLandmarks {
         true
       );
     }
+    this.addPergola(group, new THREE.Vector3(13.9, 5.98, 2.72), 3.4, 2.2, 2.0, dark, peach, seed + 1110, 0.04);
+    this.addPergola(group, new THREE.Vector3(17.8, 6.74, 0.52), 2.8, 2.0, 1.8, dark, teal, seed + 1124, -0.16);
+    this.addDishRig(group, new THREE.Vector3(10.7, 0.2, 4.6), 0.86, 2.7, dark, teal, seed + 1138, 0.22);
 
     return group;
   }
@@ -1204,11 +1361,39 @@ export class WorldLandmarks {
     const leaf = this.createMaterial(0x4b8f78);
     const water = this.createGlowMaterial(0x75dacd, 0.58);
     const blush = this.createMaterial(0xf1a9ac);
+    const stone = this.createMaterial(0xe7c9a1);
+    const dark = this.createMaterial(0x51423d);
+    const teal = this.createMaterial(0x83d0c4);
     const grazerBody = this.createMaterial(0x8a6c76);
     const grazerHorn = this.createMaterial(0xdcc9b1);
 
     this.mesh(group, new THREE.CircleGeometry(4.6, 88), water, [0, 0.08, 0], [1.55, 1, 0.82], [-Math.PI / 2, 0, 0.18], false);
     this.mesh(group, new THREE.TorusGeometry(4.8, 0.18, 6, 68), blush, [0, 0.16, 0], [1.55, 0.24, 0.82], [-Math.PI / 2, 0, 0.18]);
+    this.mesh(group, new THREE.CircleGeometry(5.8, 48), stone, [0, 0.02, 0], [1.38, 1, 0.94], [-Math.PI / 2, 0, 0.12], false);
+
+    this.mesh(group, this.detailedBox(4.1, 1.8, 3.2, seed + 310, 4, 5, 4, 0.03), stone, [-8.4, 0.92, -1.6], 1, [0, 0.18, 0]);
+    this.mesh(group, this.archFrameGeometry(2.1, 2.3, 0.24, 0.24, seed + 321), dark, [-8.3, 0.98, 0.1], 1, [0, 0.18, 0], true);
+    this.mesh(group, this.detailedCylinder(1.1, 1.34, 0.9, 10, 4, seed + 332, 0.02), blush, [-8.5, 2.06, -1.6], [1, 0.42, 1], [0, 0, 0], false);
+    this.addPergola(group, new THREE.Vector3(-7.6, 0.08, 3.5), 3.6, 2.4, 2.15, dark, blush, seed + 340, 0.32);
+
+    this.mesh(group, this.detailedBox(3.8, 1.6, 2.9, seed + 350, 4, 5, 4, 0.03), blush, [8.1, 0.82, 2.8], 1, [0, -0.24, 0]);
+    this.mesh(group, this.detailedCylinder(0.72, 0.94, 3.6, 10, 8, seed + 361, 0.02), stone, [8.8, 2.2, 2.4]);
+    this.mesh(group, new THREE.SphereGeometry(0.78, 10, 8), teal, [8.8, 4.3, 2.4], [1, 0.74, 1], [0, 0, 0], false);
+    this.addPergola(group, new THREE.Vector3(7.0, 0.08, -4.1), 3.2, 2.2, 2.05, dark, stone, seed + 372, -0.48);
+    this.addBridge(group, new THREE.Vector3(-1.6, 0.2, 4.6), new THREE.Vector3(2.4, 0.2, 4.2), 0.72, 0.08, dark, stone);
+
+    for (let i = 0; i < 4; i += 1) {
+      this.mesh(
+        group,
+        this.detailedBox(1.0 + i * 0.14, 0.28, 0.66, seed + 390 + i, 2, 2, 2, 0.01),
+        i % 2 === 0 ? stone : blush,
+        [-2.8 + i * 1.7, 0.22, -5.4 + Math.sin(i) * 0.26],
+        1,
+        [0, 0.22 + i * 0.08, 0],
+        false
+      );
+    }
+    this.addDishRig(group, new THREE.Vector3(6.6, 0.1, 5.5), 0.92, 2.2, dark, teal, seed + 420, 0.22);
 
     for (let i = 0; i < 14; i += 1) {
       const angle = seededRandom(seed + i) * Math.PI * 2;
@@ -1315,6 +1500,20 @@ export class WorldLandmarks {
     this.mesh(group, this.detailedCylinder(0.36, 0.5, 2.8, 10, 6, seed + 150, 0.02), rust, [-4.0, 1.45, 2.4]);
     this.mesh(group, this.detailedCylinder(0.36, 0.5, 2.5, 10, 6, seed + 160, 0.02), rust, [-4.6, 1.3, 3.3]);
     this.addCable(group, new THREE.Vector3(-4.0, 2.7, 2.4), new THREE.Vector3(-1.2, 2.4, 0.6), 0.4, 0.03, dark);
+    this.addPipeRack(
+      group,
+      new THREE.Vector3(-4.8, 2.8, 3.1),
+      new THREE.Vector3(-0.9, 2.8, 0.5),
+      2.7,
+      dark,
+      teal,
+      seed + 171
+    );
+    this.mesh(group, this.detailedBox(3.6, 1.8, 2.8, seed + 176, 4, 4, 4, 0.03), rust, [5.8, 0.94, 3.8], 1, [0, -0.18, 0]);
+    this.mesh(group, this.detailedBox(2.4, 0.18, 3.4, seed + 182, 3, 2, 3, 0.01), hull, [5.8, 1.94, 3.8], 1, [0, -0.18, 0], false);
+    this.addWindowGrid(group, new THREE.Vector3(5.8, 0.88, 5.26), 3, 2, 0.92, 0.7, [0.34, 0.38, 0.12], dark);
+    this.addPergola(group, new THREE.Vector3(6.1, 0.06, -4.5), 3.2, 2.2, 2.1, dark, hull, seed + 186, -0.2);
+    this.addDishRig(group, new THREE.Vector3(6.8, 1.96, 4.8), 0.82, 1.8, dark, teal, seed + 190, -0.4);
     for (let i = 0; i < 7; i += 1) {
       this.mesh(
         group,
@@ -1424,6 +1623,18 @@ export class WorldLandmarks {
     this.addCable(group, new THREE.Vector3(3.6, 4.7, -4.0), new THREE.Vector3(7.0, 4.2, -1.8), 0.9, 0.03, dark);
     this.addCable(group, new THREE.Vector3(7.0, 4.2, -1.8), new THREE.Vector3(9.2, 3.4, 1.0), 0.6, 0.03, dark);
     this.mesh(group, new THREE.CircleGeometry(0.52, 28), teal, [3.5, 1.02, -2.8], [1.2, 1, 0.8], [-Math.PI / 2, 0, 0], false);
+    this.mesh(group, this.detailedBox(3.4, 1.5, 2.2, seed + 170, 4, 4, 3, 0.03), hull, [7.8, 0.78, -3.9], 1, [0, 0.22, 0]);
+    this.addPergola(group, new THREE.Vector3(7.6, 0.04, -0.8), 3.5, 2.4, 2.05, dark, rust, seed + 176, -0.14);
+    this.addDishRig(group, new THREE.Vector3(3.9, 0.1, -4.1), 0.88, 3.2, dark, teal, seed + 182, 0.36);
+    this.addPipeRack(
+      group,
+      new THREE.Vector3(-5.8, 1.7, -3.2),
+      new THREE.Vector3(6.2, 1.7, -2.2),
+      1.7,
+      dark,
+      teal,
+      seed + 186
+    );
     for (let i = 0; i < 6; i += 1) {
       this.mesh(
         group,
@@ -1705,6 +1916,7 @@ export class WorldLandmarks {
     const mat = this.createMaterial(0xbb7a8c);
     const teal = this.createMaterial(0x86c8bc);
     const dark = this.createMaterial(0x4b444c);
+    const paper = this.createMaterial(0xe6d8bf);
 
     for (let i = 0; i < 5; i += 1) {
       const size = 4.5 - i * 0.55;
@@ -1781,6 +1993,21 @@ export class WorldLandmarks {
       3.8,
       7.2
     );
+    this.addPergola(group, new THREE.Vector3(5.4, 0.08, -2.2), 3.8, 2.6, 2.2, dark, paper, seed + 1140, 0.18);
+    this.addPergola(group, new THREE.Vector3(-5.6, 0.08, 2.8), 3.2, 2.1, 2.0, dark, teal, seed + 1152, -0.32);
+    this.addPipeRack(
+      group,
+      new THREE.Vector3(-6.2, 2.3, -2.8),
+      new THREE.Vector3(6.5, 2.9, -1.6),
+      2.3,
+      dark,
+      paper,
+      seed + 1168
+    );
+    this.addDishRig(group, new THREE.Vector3(-4.8, 0.06, -3.9), 0.78, 2.4, dark, teal, seed + 1184, 0.48);
+    this.mesh(group, this.detailedBox(0.62, 5.8, 0.62, seed + 1198, 3, 10, 3, 0.02), dark, [5.8, 2.9, 3.6], 1, [0, 0.08, 0], false);
+    this.mesh(group, this.detailedBox(1.4, 0.16, 1.4, seed + 1206, 3, 2, 3, 0.01), paper, [5.8, 5.94, 3.6], 1, [0, 0.08, 0], false);
+    this.addWindowGrid(group, new THREE.Vector3(5.8, 1.0, 4.36), 2, 3, 0.64, 0.92, [0.2, 0.32, 0.1], dark);
 
     return group;
   }
